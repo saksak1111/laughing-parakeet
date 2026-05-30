@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>元素卡牌对决 v36</title>
+<title>元素卡牌对决 v37</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
@@ -961,7 +961,7 @@ button:hover { background: #1a2440; border-color: #7eb8fe; }
   <span class="hl-y">💎 费用机制：</span>每张卡牌左上角标有费用（<span class="hl-y">2~7</span>），第 N 回合拥有 N 点费用（最高 16 点）。<br>
   出牌需消耗对应费用，<span class="hl-w">未用完的费用不保留到下回合</span>。<span class="hl-y">⏱ 最多 16 回合</span>，回合结束后占格多者获胜。<br>
   <span class="hl-y">🔄 翻面可翻回：</span>被敌方翻面的卡牌（暗色）并非永久失效，相邻己方高攻卡牌可将其<span class="hl-w">夺回</span>（改变归属）。<br>
-  <span class="hl-y">👑 国王：</span>人类阵营光环牌，无攻击但防御极高（8/8/8/8）。未翻面时所有我方人类+1攻击力，放置时可选择一张卡牌再次比较。
+  <span class="hl-y">👑 国王：</span>人类阵营光环牌，无攻击但防御极高（8/8/8/8）。未翻面时所有我方人类四个方向+1，放置时可选择一名友方单位再次比较。
 </div>
 
 <!-- 全局 tooltip -->
@@ -1063,7 +1063,7 @@ button:hover { background: #1a2440; border-color: #7eb8fe; }
       <div class="cd-name">👑 国王 · 再次比较</div>
       <div style="color:#aaa;font-size:12px">选择棋盘上的一张卡牌进行额外战斗判定</div>
     </div>
-    <div id="king-duel-hint" style="text-align:center;color:#d4aa44;font-size:13px;margin-bottom:12px">点击敌方卡牌进行再次比较</div>
+    <div id="king-duel-hint" style="text-align:center;color:#d4aa44;font-size:13px;margin-bottom:12px">选择一名友方单位再次进行比较</div>
     <div id="king-duel-board" style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:14px">
       <!-- 由 JS 动态生成棋盘缩略图 -->
     </div>
@@ -1176,7 +1176,7 @@ const SKILLS = {
   // === 持续光环技能 ===
   king_aura: {
     type: 'aura', name: '王之威仪', icon: '👑',
-    desc: '持续：场上未翻面时，所有我方人类阵营卡牌每个方向攻击力+1；放置时可选择一张卡牌再次进行战斗判定'
+    desc: '持续：场上未翻面时，所有我方人类阵营卡牌四个方向点数+1；放置时可选择一名友方单位，使其与相邻敌方再次进行战斗判定'
   }
 };
 
@@ -1917,6 +1917,20 @@ function getAtkVal(card, dir) {
   }
   return val;
 }
+
+// 获取卡牌基础值（含国王光环加成）- 用于显示
+function getDisplayVal(card, dir) {
+  let val = card[dir];
+  // 国王光环：若场上有未翻面的我方国王，人类阵营所有方向+1
+  if (card.race === '人类' && board) {
+    const hasKing = board.some(c =>
+      c && c.owner === card.owner &&
+      c.name === '国王' && !c.flipped
+    );
+    if (hasKing) val += 1;
+  }
+  return val;
+}
 // 获取防御值（被攻击时用）
 function getDefVal(card, dir) { return card[`${dir}_def`] !== undefined ? card[`${dir}_def`] : card[dir]; }
 // 保留原来的 getVal 用于兼容（返回基础值）
@@ -2490,9 +2504,9 @@ function showKingDuelPicker(result) {
       cell.style.fontSize = '10px';
       cell.style.textAlign = 'center';
       cell.style.padding = '2px';
-      // 国王的"再次比较"只能选择已部署的敌方卡牌
-      const isEnemy = c.owner !== result.owner;
-      if (isEnemy) {
+      // 国王的"再次比较"只能选择已部署的友方卡牌（不含国王自己）
+      const isAlly = c.owner === result.owner && c.name !== '国王';
+      if (isAlly) {
         cell.addEventListener('click', () => kingDuelSelect(i));
         cell.addEventListener('mouseenter', () => { cell.style.borderColor = '#d4aa44'; cell.style.transform = 'scale(1.05)'; });
         cell.addEventListener('mouseleave', () => { cell.style.borderColor = '#2a3a5a'; cell.style.transform = 'scale(1)'; });
@@ -2518,60 +2532,54 @@ function kingDuelSelect(targetIdx) {
   const { idx, owner } = _kingDuelPending;
   _kingDuelPending = null;
 
-  const me = board[idx];
-  const target = board[targetIdx];
-  if (!me || !target) return;
+  const me = board[idx]; // 国王
+  const ally = board[targetIdx]; // 被选中的友方单位
+  if (!me || !ally) return;
 
   const logs = [];
 
-  // 对目标卡牌进行一次额外的战斗判定（与目标的所有相邻敌方进行对抗）
-  // 实际上国王的"再次比较"应该是：国王作为进攻方，与目标卡牌进行一次对抗
-  // 找到国王和目标之间的方向关系
-  let myDir = null, enemyDir = null;
-  for (const { idx: nIdx, dir } of NEIGHBORS[idx]) {
-    if (nIdx === targetIdx) {
-      myDir = dir;
-      enemyDir = oppositeDir(dir);
-      break;
+  // 国王的"再次比较"：让友方单位与其相邻的敌方卡牌进行额外战斗判定
+  // 遍历友方单位的所有相邻格子
+  let hasBattle = false;
+  for (const { idx: nIdx, dir } of NEIGHBORS[targetIdx]) {
+    const enemy = board[nIdx];
+    if (enemy && enemy.owner !== ally.owner) {
+      // 友方单位从 dir 方向进攻敌方
+      const myDir = dir;
+      const enemyDir = oppositeDir(dir);
+      let myVal = getAtkVal(ally, myDir);
+      let enemyVal = getDefVal(enemy, enemyDir);
+
+      // 应用被动技能修正
+      const mySk = getSkill(ally);
+      if (mySk) {
+        if (mySk.calcGlobal) myVal = mySk.calcGlobal(myVal);
+        if (mySk.calcAtk) myVal = mySk.calcAtk(myVal, myDir);
+      }
+      const enemySk = getSkill(enemy);
+      if (enemySk) {
+        if (enemySk.calcDef) enemyVal = enemySk.calcDef(enemyVal);
+        if (enemySk.calcGlobal) enemyVal = enemySk.calcGlobal(enemyVal);
+      }
+
+      const tieWins = mySk && mySk.tieWins;
+      const win = (myVal > enemyVal) || (tieWins && myVal === enemyVal);
+
+      if (win) {
+        const wasFlipped = enemy.flipped;
+        enemy.flipped = false;
+        enemy.owner = ally.owner;
+        const actionText = wasFlipped ? '夺回' : '翻转';
+        logs.push(`<span style="color:#d4aa44">👑 [王之威仪] ${ally.name} 对 ${enemy.name} ${actionText}！(${myVal} vs ${enemyVal})</span>`);
+      } else {
+        logs.push(`<span style="color:#888">👑 [王之威仪] ${ally.name} 对 ${enemy.name} 比较失败 (${myVal} vs ${enemyVal})</span>`);
+      }
+      hasBattle = true;
     }
   }
 
-  // 如果目标与国王不相邻，则选择国王最强攻击面 vs 目标最弱防御面
-  let myVal, enemyVal;
-  if (myDir) {
-    myVal = getAtkVal(me, myDir);
-    enemyVal = getDefVal(target, enemyDir);
-  } else {
-    // 不相邻：用国王最高攻击面 vs 目标最低防御面
-    const myDirs = ['t','b','l','r'];
-    myVal = Math.max(...myDirs.map(d => getAtkVal(me, d)));
-    const enemyDirs = ['t','b','l','r'];
-    enemyVal = Math.min(...enemyDirs.map(d => getDefVal(target, d)));
-  }
-
-  // 应用被动技能修正
-  const mySk = getSkill(me);
-  if (mySk) {
-    if (mySk.calcGlobal) myVal = mySk.calcGlobal(myVal);
-    if (mySk.calcAtk && myDir) myVal = mySk.calcAtk(myVal, myDir);
-  }
-  const enemySk = getSkill(target);
-  if (enemySk) {
-    if (enemySk.calcDef) enemyVal = enemySk.calcDef(enemyVal);
-    if (enemySk.calcGlobal) enemyVal = enemySk.calcGlobal(enemyVal);
-  }
-
-  const tieWins = mySk && mySk.tieWins;
-  const win = (myVal > enemyVal) || (tieWins && myVal === enemyVal);
-
-  if (win && target.owner !== me.owner) {
-    const wasFlipped = target.flipped;
-    target.flipped = false;
-    target.owner = me.owner;
-    const actionText = wasFlipped ? '夺回' : '翻转';
-    logs.push(`<span style="color:#d4aa44">👑 [王之威仪] 对 ${target.name} 再次比较！${actionText}！(${myVal} vs ${enemyVal})</span>`);
-  } else {
-    logs.push(`<span style="color:#888">👑 [王之威仪] 对 ${target.name} 再次比较，未能翻转 (${myVal} vs ${enemyVal})</span>`);
+  if (!hasBattle) {
+    logs.push(`<span style="color:#888">👑 [王之威仪] ${ally.name} 周围没有敌方卡牌</span>`);
   }
 
   if (logs.length > 0) setBattleLog(logs.join('<br>'));
