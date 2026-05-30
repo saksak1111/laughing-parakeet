@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>元素卡牌对决 v40</title>
+<title>元素卡牌对决 v41</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
@@ -2800,7 +2800,7 @@ function placeCard(idx, card, owner) {
   board[idx] = normalizeCard({
     owner,
     deckIdx: card.deckIdx,
-    name: card.name, skill: card.skill,
+    name: card.name, skill: card.skill, race: card.race,
     t: card.t, b: card.b, l: card.l, r: card.r,
     cost: card.cost,
     // 保留攻防分离原始字段（若有）
