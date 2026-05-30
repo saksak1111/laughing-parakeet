@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>元素卡牌对决 v48</title>
+<title>元素卡牌对决 v49</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
@@ -2300,12 +2300,13 @@ function _cdFillDetail(c) {
   const dirNames = { t: '↑ 上', b: '↓ 下', l: '← 左', r: '→ 右' };
   dirs.forEach(d => {
     const el = document.getElementById(`cd-${d}`);
-    const currentVal = c[d];
-    const baseVal = c[`${d}_base`] !== undefined ? c[`${d}_base`] : currentVal;
-    el.textContent = currentVal;
-    if (currentVal > baseVal) {
+    const baseVal = c[`${d}_base`] !== undefined ? c[`${d}_base`] : c[d];
+    // 使用 getDisplayVal 获取实际生效值（包含国王光环等加成）
+    const displayVal = getDisplayVal(c, d);
+    el.textContent = displayVal;
+    if (displayVal > baseVal) {
       el.style.color = '#50c878'; // 绿色：上升
-    } else if (currentVal < baseVal) {
+    } else if (displayVal < baseVal) {
       el.style.color = '#e06040'; // 红色：下降
     } else {
       el.style.color = '#7eb8fe'; // 蓝色：不变
@@ -2314,16 +2315,16 @@ function _cdFillDetail(c) {
 
   // 条形图
   const barsHtml = dirs.map(d => {
-    const currentVal = c[d];
-    const baseVal = c[`${d}_base`] !== undefined ? c[`${d}_base`] : currentVal;
-    const pct = (currentVal / 9) * 100;
+    const baseVal = c[`${d}_base`] !== undefined ? c[`${d}_base`] : c[d];
+    const displayVal = getDisplayVal(c, d);
+    const pct = (displayVal / 9) * 100;
     let barColor = '#4a88cc';
-    if (currentVal > baseVal) barColor = '#50c878';
-    else if (currentVal < baseVal) barColor = '#e06040';
+    if (displayVal > baseVal) barColor = '#50c878';
+    else if (displayVal < baseVal) barColor = '#e06040';
     return `<div class="cd-bar-row">
       <span class="cd-bar-label">${dirNames[d].charAt(0)}</span>
       <div class="cd-bar-track"><div class="cd-bar-fill" style="width:${pct}%;background:${barColor}"></div></div>
-      <span class="cd-bar-val" style="color:${barColor}">${currentVal}</span>
+      <span class="cd-bar-val" style="color:${barColor}">${displayVal}</span>
     </div>`;
   }).join('');
   document.getElementById('cd-bars').innerHTML = barsHtml;
@@ -2426,12 +2427,13 @@ function _cdFillDetailValues(c) {
   const dirNames = { t: '↑ 上', b: '↓ 下', l: '← 左', r: '→ 右' };
   dirs.forEach(d => {
     const el = document.getElementById(`cd-${d}`);
-    const currentVal = c[d];
-    const baseVal = c[`${d}_base`] !== undefined ? c[`${d}_base`] : currentVal;
-    el.textContent = currentVal;
-    if (currentVal > baseVal) {
+    const baseVal = c[`${d}_base`] !== undefined ? c[`${d}_base`] : c[d];
+    // 使用 getDisplayVal 获取实际生效值（包含国王光环等加成）
+    const displayVal = getDisplayVal(c, d);
+    el.textContent = displayVal;
+    if (displayVal > baseVal) {
       el.style.color = '#50c878'; // 绿色：上升
-    } else if (currentVal < baseVal) {
+    } else if (displayVal < baseVal) {
       el.style.color = '#e06040'; // 红色：下降
     } else {
       el.style.color = '#7eb8fe'; // 蓝色：不变
@@ -2439,16 +2441,16 @@ function _cdFillDetailValues(c) {
   });
   // 更新条形图
   const barsHtml = dirs.map(d => {
-    const currentVal = c[d];
-    const baseVal = c[`${d}_base`] !== undefined ? c[`${d}_base`] : currentVal;
-    const pct = (currentVal / 9) * 100;
+    const baseVal = c[`${d}_base`] !== undefined ? c[`${d}_base`] : c[d];
+    const displayVal = getDisplayVal(c, d);
+    const pct = (displayVal / 9) * 100;
     let barColor = '#4a88cc';
-    if (currentVal > baseVal) barColor = '#50c878';
-    else if (currentVal < baseVal) barColor = '#e06040';
+    if (displayVal > baseVal) barColor = '#50c878';
+    else if (displayVal < baseVal) barColor = '#e06040';
     return `<div class="cd-bar-row">
       <span class="cd-bar-label">${dirNames[d].charAt(0)}</span>
       <div class="cd-bar-track"><div class="cd-bar-fill" style="width:${pct}%;background:${barColor}"></div></div>
-      <span class="cd-bar-val" style="color:${barColor}">${currentVal}</span>
+      <span class="cd-bar-val" style="color:${barColor}">${displayVal}</span>
     </div>`;
   }).join('');
   document.getElementById('cd-bars').innerHTML = barsHtml;
