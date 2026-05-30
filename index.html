@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>元素卡牌对决 v39</title>
+<title>元素卡牌对决 v40</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
@@ -2243,25 +2243,27 @@ function _cdFillDetail(c) {
   document.getElementById('cd-name').textContent = c.name;
   document.getElementById('cd-name').style.color = '#7eb8fe';
 
-  // 显示所属（玩家/AI/未部署）
-  const ownerEl = document.getElementById('cd-owner');
-  if (c.owner === 'player') {
-    ownerEl.textContent = '🧑 玩家';
-    ownerEl.style.color = '#7eb8fe';
-    ownerEl.style.background = '#1a2a4a';
-  } else if (c.owner === 'ai') {
-    ownerEl.textContent = '🤖 AI';
-    ownerEl.style.color = '#fe7e9e';
-    ownerEl.style.background = '#3a1a2a';
-  } else {
-    ownerEl.textContent = '📦 未部署';
-    ownerEl.style.color = '#888';
-    ownerEl.style.background = '#1a1a1a';
-  }
-  ownerEl.style.padding = '2px 8px';
-  ownerEl.style.borderRadius = '4px';
-  ownerEl.style.fontSize = '12px';
-  ownerEl.style.fontWeight = '600';
+  // 显示种族归属（如人类、野兽、元素等）
+  const raceEl = document.getElementById('cd-owner');
+  const raceName = c.race || '未知';
+  const raceColors = {
+    '人类': { color: '#d4aa44', bg: '#3a3010' },
+    '野兽': { color: '#e06040', bg: '#3a1510' },
+    '元素': { color: '#4090d0', bg: '#101a3a' },
+    '龙族': { color: '#a060d0', bg: '#2a103a' },
+    '亡灵': { color: '#50a080', bg: '#0a2a1a' },
+    '植物': { color: '#50b060', bg: '#0a2a10' },
+    '机械': { color: '#8888aa', bg: '#1a1a2a' },
+    '幻灵': { color: '#d080d0', bg: '#2a102a' }
+  };
+  const rc = raceColors[raceName] || { color: '#aaa', bg: '#2a2a2a' };
+  raceEl.textContent = raceName;
+  raceEl.style.color = rc.color;
+  raceEl.style.background = rc.bg;
+  raceEl.style.padding = '2px 8px';
+  raceEl.style.borderRadius = '4px';
+  raceEl.style.fontSize = '12px';
+  raceEl.style.fontWeight = '600';
 
   document.getElementById('cd-cost').textContent = `💎 费用 ${c.cost}`;
 
