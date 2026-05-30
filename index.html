@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>元素卡牌对决 v38</title>
+<title>元素卡牌对决 v39</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
@@ -1007,7 +1007,10 @@ button:hover { background: #1a2440; border-color: #7eb8fe; }
     <button class="card-detail-close" onclick="hideCardDetail()">✕</button>
     <div class="cd-header">
       <div class="cd-name" id="cd-name"></div>
-      <div class="cd-cost-badge" id="cd-cost"></div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <div class="cd-owner-badge" id="cd-owner"></div>
+        <div class="cd-cost-badge" id="cd-cost"></div>
+      </div>
     </div>
     <div class="cd-stats-grid">
       <div class="cd-stat"><div class="cd-stat-val" id="cd-t">-</div><div class="cd-stat-dir">↑ 上</div></div>
@@ -2239,6 +2242,27 @@ function _cdFillDetail(c) {
 
   document.getElementById('cd-name').textContent = c.name;
   document.getElementById('cd-name').style.color = '#7eb8fe';
+
+  // 显示所属（玩家/AI/未部署）
+  const ownerEl = document.getElementById('cd-owner');
+  if (c.owner === 'player') {
+    ownerEl.textContent = '🧑 玩家';
+    ownerEl.style.color = '#7eb8fe';
+    ownerEl.style.background = '#1a2a4a';
+  } else if (c.owner === 'ai') {
+    ownerEl.textContent = '🤖 AI';
+    ownerEl.style.color = '#fe7e9e';
+    ownerEl.style.background = '#3a1a2a';
+  } else {
+    ownerEl.textContent = '📦 未部署';
+    ownerEl.style.color = '#888';
+    ownerEl.style.background = '#1a1a1a';
+  }
+  ownerEl.style.padding = '2px 8px';
+  ownerEl.style.borderRadius = '4px';
+  ownerEl.style.fontSize = '12px';
+  ownerEl.style.fontWeight = '600';
+
   document.getElementById('cd-cost').textContent = `💎 费用 ${c.cost}`;
 
   // 数值
