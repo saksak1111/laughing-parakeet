@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>元素卡牌对决 v43</title>
+<title>元素卡牌对决 v44</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
@@ -2408,27 +2408,27 @@ function resolveCombat(idx, placerOwner) {
     if (!enemy || enemy.locked || enemy.owner === me.owner) return;
 
     // 进攻方使用攻击值（atk），防御方使用防御值（def）
-    let myVal = getAtkVal(me, dir);
-    let enemyVal = getDefVal(enemy, oppositeDir(dir));
+    let myAtkVal = getAtkVal(me, dir);
+    let enemyDefVal = getDefVal(enemy, oppositeDir(dir));
 
     // ==== 被动技能：进攻方修正 ====
     if (mySk) {
       // 全局加成（均衡之力）
-      if (mySk.calcGlobal) myVal = mySk.calcGlobal(myVal);
+      if (mySk.calcGlobal) myAtkVal = mySk.calcGlobal(myAtkVal);
       // 方向攻击加成（烈焰冲击）
-      if (mySk.calcAtk) myVal = mySk.calcAtk(myVal, dir);
+      if (mySk.calcAtk) myAtkVal = mySk.calcAtk(myAtkVal, dir);
     }
 
     // ==== 被动技能：防御方修正 ====
     const enemySk = getSkill(enemy);
     if (enemySk) {
-      if (enemySk.calcDef) enemyVal = enemySk.calcDef(enemyVal);
-      if (enemySk.calcGlobal) enemyVal = enemySk.calcGlobal(enemyVal);
+      if (enemySk.calcDef) enemyDefVal = enemySk.calcDef(enemyDefVal);
+      if (enemySk.calcGlobal) enemyDefVal = enemySk.calcGlobal(enemyDefVal);
     }
 
     // ==== 判定结果：进攻 atk > 防御 def 即可翻转 ====
     const tieWins = mySk && mySk.tieWins;
-    const win = (myVal > enemyVal) || (tieWins && myVal === enemyVal);
+    const win = (myAtkVal > enemyDefVal) || (tieWins && myAtkVal === enemyDefVal);
 
     if (win) {
       const wasFlipped = enemy.flipped;
@@ -2440,7 +2440,35 @@ function resolveCombat(idx, placerOwner) {
       const mySkStr = (mySk && (mySk.calcAtk || mySk.calcGlobal))
         ? `[${mySk.name}]` : '';
       const actionText = wasFlipped ? '夺回' : '翻转';
-      logs.push(`${posName}被${actionText}！${mySkStr}(${myVal} vs ${enemyVal})`);
+      logs.push(`${posName}被${actionText}！${mySkStr}(${myAtkVal} vs ${enemyDefVal})`);
+    }
+
+    // ==== 敌方反击：敌方从相反方向进攻我方 ====
+    // 如果敌方在相邻方向上的攻击值 > 我方防御值，则我方被翻转
+    let enemyAtkVal = getAtkVal(enemy, oppositeDir(dir));
+    let myDefVal = getDefVal(me, dir);
+
+    // 被动技能修正（敌方进攻）
+    if (enemySk) {
+      if (enemySk.calcGlobal) enemyAtkVal = enemySk.calcGlobal(enemyAtkVal);
+      if (enemySk.calcAtk) enemyAtkVal = enemySk.calcAtk(enemyAtkVal, oppositeDir(dir));
+    }
+
+    // 被动技能修正（我方防御）
+    if (mySk) {
+      if (mySk.calcDef) myDefVal = mySk.calcDef(myDefVal);
+      if (mySk.calcGlobal) myDefVal = mySk.calcGlobal(myDefVal);
+    }
+
+    const enemyTieWins = enemySk && enemySk.tieWins;
+    const enemyWin = (enemyAtkVal > myDefVal) || (enemyTieWins && enemyAtkVal === myDefVal);
+
+    if (enemyWin) {
+      const wasFlipped = me.flipped;
+      me.flipped = false;
+      me.owner = enemy.owner;
+      const actionText = wasFlipped ? '夺回' : '反击翻转';
+      logs.push(`<span style="color:#fe7e9e">${posName}反击！${enemy.name} ${actionText} ${me.name}(${enemyAtkVal} vs ${myDefVal})</span>`);
     }
   });
 
