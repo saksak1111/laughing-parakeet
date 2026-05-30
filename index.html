@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>元素卡牌对决 v47</title>
+<title>元素卡牌对决 v48</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
@@ -1917,6 +1917,10 @@ function normalizeCard(card) {
   dirs.forEach(d => {
     c[`${d}_atk`] = (card[atkMap[d]] !== undefined) ? card[atkMap[d]] : card[d];
     c[`${d}_def`] = (card[defMap[d]] !== undefined) ? card[defMap[d]] : card[d];
+    // 保存基础值用于对比显示
+    if (c[`${d}_base`] === undefined) {
+      c[`${d}_base`] = card[d];
+    }
   });
   return c;
 }
@@ -2291,22 +2295,35 @@ function _cdFillDetail(c) {
 
   document.getElementById('cd-cost').textContent = `💎 费用 ${c.cost}`;
 
-  // 数值
+  // 数值（根据与基础值比较显示不同颜色）
   const dirs = ['t','b','l','r'];
   const dirNames = { t: '↑ 上', b: '↓ 下', l: '← 左', r: '→ 右' };
   dirs.forEach(d => {
     const el = document.getElementById(`cd-${d}`);
-    el.textContent = c[d];
-    el.style.color = '#7eb8fe';
+    const currentVal = c[d];
+    const baseVal = c[`${d}_base`] !== undefined ? c[`${d}_base`] : currentVal;
+    el.textContent = currentVal;
+    if (currentVal > baseVal) {
+      el.style.color = '#50c878'; // 绿色：上升
+    } else if (currentVal < baseVal) {
+      el.style.color = '#e06040'; // 红色：下降
+    } else {
+      el.style.color = '#7eb8fe'; // 蓝色：不变
+    }
   });
 
   // 条形图
   const barsHtml = dirs.map(d => {
-    const pct = (c[d] / 9) * 100;
+    const currentVal = c[d];
+    const baseVal = c[`${d}_base`] !== undefined ? c[`${d}_base`] : currentVal;
+    const pct = (currentVal / 9) * 100;
+    let barColor = '#4a88cc';
+    if (currentVal > baseVal) barColor = '#50c878';
+    else if (currentVal < baseVal) barColor = '#e06040';
     return `<div class="cd-bar-row">
       <span class="cd-bar-label">${dirNames[d].charAt(0)}</span>
-      <div class="cd-bar-track"><div class="cd-bar-fill" style="width:${pct}%;background:#4a88cc"></div></div>
-      <span class="cd-bar-val">${c[d]}</span>
+      <div class="cd-bar-track"><div class="cd-bar-fill" style="width:${pct}%;background:${barColor}"></div></div>
+      <span class="cd-bar-val" style="color:${barColor}">${currentVal}</span>
     </div>`;
   }).join('');
   document.getElementById('cd-bars').innerHTML = barsHtml;
@@ -2409,16 +2426,29 @@ function _cdFillDetailValues(c) {
   const dirNames = { t: '↑ 上', b: '↓ 下', l: '← 左', r: '→ 右' };
   dirs.forEach(d => {
     const el = document.getElementById(`cd-${d}`);
-    el.textContent = c[d];
-    el.style.color = '#7eb8fe';
+    const currentVal = c[d];
+    const baseVal = c[`${d}_base`] !== undefined ? c[`${d}_base`] : currentVal;
+    el.textContent = currentVal;
+    if (currentVal > baseVal) {
+      el.style.color = '#50c878'; // 绿色：上升
+    } else if (currentVal < baseVal) {
+      el.style.color = '#e06040'; // 红色：下降
+    } else {
+      el.style.color = '#7eb8fe'; // 蓝色：不变
+    }
   });
   // 更新条形图
   const barsHtml = dirs.map(d => {
-    const pct = (c[d] / 9) * 100;
+    const currentVal = c[d];
+    const baseVal = c[`${d}_base`] !== undefined ? c[`${d}_base`] : currentVal;
+    const pct = (currentVal / 9) * 100;
+    let barColor = '#4a88cc';
+    if (currentVal > baseVal) barColor = '#50c878';
+    else if (currentVal < baseVal) barColor = '#e06040';
     return `<div class="cd-bar-row">
       <span class="cd-bar-label">${dirNames[d].charAt(0)}</span>
-      <div class="cd-bar-track"><div class="cd-bar-fill" style="width:${pct}%;background:#4a88cc"></div></div>
-      <span class="cd-bar-val">${c[d]}</span>
+      <div class="cd-bar-track"><div class="cd-bar-fill" style="width:${pct}%;background:${barColor}"></div></div>
+      <span class="cd-bar-val" style="color:${barColor}">${currentVal}</span>
     </div>`;
   }).join('');
   document.getElementById('cd-bars').innerHTML = barsHtml;
