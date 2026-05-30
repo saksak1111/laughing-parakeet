@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>元素卡牌对决 v49</title>
+<title>元素卡牌对决 v50</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
@@ -404,6 +404,20 @@ h1 { margin-top: 14px; font-size: 22px; font-weight: 700; letter-spacing: 2px; c
 /* 棋盘上的分离值尺寸微调 */
 .card-on-board .atk-tri { width: 24px; height: 20px; font-size: 11px; padding-bottom: 1px; color: #fff !important; }
 .card-on-board .def-sq  { width: 20px; height: 20px; font-size: 11px; color: #fff !important; }
+
+/* ===== Buff/Nerf 数值颜色 ===== */
+.val-buff { color: #50c878 !important; text-shadow: 0 0 6px #50c87866 !important; }
+.val-nerf { color: #e06040 !important; text-shadow: 0 0 6px #e0604066 !important; }
+/* 棋盘上的 buff/nerf 更醒目 */
+.card-on-board .val-buff,
+.card-on-board .side-val.val-buff { color: #50c878 !important; text-shadow: 0 0 8px #50c87888 !important; font-weight: 800 !important; }
+.card-on-board .val-nerf,
+.card-on-board .side-val.val-nerf { color: #e06040 !important; text-shadow: 0 0 8px #e0604088 !important; font-weight: 800 !important; }
+/* 攻防分离值的 buff/nerf */
+.card-on-board .atk-tri.val-buff { background: rgba(80,200,120,0.85) !important; }
+.card-on-board .atk-tri.val-nerf { background: rgba(224,96,64,0.85) !important; }
+.card-on-board .def-sq.val-buff { background: rgba(80,200,120,0.75) !important; border-color: rgba(80,200,120,0.8) !important; }
+.card-on-board .def-sq.val-nerf { background: rgba(224,96,64,0.75) !important; border-color: rgba(224,96,64,0.8) !important; }
 
 
 /* ===== 旋转预览中的分离值 ===== */
@@ -2033,14 +2047,23 @@ function cardHtml(c, onBoard) {
     // 应用国王光环加成到显示值
     const displayAtk = getAtkVal(c, dir);
     const displayDef = getDefVal(c, dir);
+    // 计算颜色类（根据与基础值比较）
+    const baseVal = c[`${dir}_base`] !== undefined ? c[`${dir}_base`] : c[dir];
+    const displayVal = getDisplayVal(c, dir);
+    let colorClass = '';
+    if (displayVal > baseVal) colorClass = ' val-buff';
+    else if (displayVal < baseVal) colorClass = ' val-nerf';
+
     if (atk === def) {
       // 攻防相同：圆形显示（原来的样式），但显示加成后的值
-      return `<div class="side-val ${cssClass}">${displayAtk}</div>`;
+      return `<div class="side-val ${cssClass}${colorClass}">${displayVal}</div>`;
     } else {
       // 攻防不同：三角形（攻）+ 正方形（防）
+      const atkColorClass = displayAtk > atk ? ' val-buff' : (displayAtk < atk ? ' val-nerf' : '');
+      const defColorClass = displayDef > def ? ' val-buff' : (displayDef < def ? ' val-nerf' : '');
       return `<div class="side-val split-val ${cssClass}">
-        <span class="atk-tri">${displayAtk}</span>
-        <span class="def-sq">${displayDef}</span>
+        <span class="atk-tri${atkColorClass}">${displayAtk}</span>
+        <span class="def-sq${defColorClass}">${displayDef}</span>
       </div>`;
     }
   }
