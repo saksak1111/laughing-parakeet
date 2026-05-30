@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>元素卡牌对决 v50</title>
+<title>元素卡牌对决 v51</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
@@ -1222,66 +1222,6 @@ const SKILLS = {
 // 若省略则默认 atk == def == t/b/l/r（原始圆形显示）
 // 攻击值（三角形）vs 防御值（正方形）：atk > def 可翻转对方
 const CARD_DECK = [
-  // ===== 第一组（8张）—— 高攻击、侵略性 =====
-  // 炎刃：攻击锋利，防守很弱（高攻低防）
-  { name:'炎刃',       race:'人类', t:8,b:2,l:5,r:9, ta:9,ba:2,la:6,ra:9, td:6,bd:2,ld:4,rd:8, skill:'flame_strike',     cost:5 },
-  // 烈焰骑士：均衡攻防
-  { name:'烈焰骑士',   race:'人类', t:7,b:3,l:4,r:8, skill:'eruption',         cost:6 },
-  // 火晶兽：侧攻强，防御较弱
-  { name:'火晶兽',     race:'野兽', t:6,b:4,l:6,r:7, ta:7,ba:3,la:7,ra:8, td:5,bd:4,ld:5,rd:6, skill:'flame_strike',     cost:4 },
-  // 熔岩巨像：高防低攻（坦克型）
-  { name:'熔岩巨像',   race:'元素', t:9,b:5,l:3,r:4, ta:6,ba:4,la:2,ra:3, td:9,bd:6,ld:4,rd:5, skill:'iron_wall',        cost:4 },
-  { name:'赤焰法师',   race:'人类', t:5,b:2,l:7,r:8, skill:'balanced',         cost:4 },
-  { name:'余烬战士',   race:'人类', t:6,b:6,l:5,r:5, skill:'balanced',         cost:3 },
-  { name:'爆炎龙',     race:'龙族', t:8,b:1,l:8,r:3, ta:9,ba:1,la:9,ra:3, td:6,bd:1,ld:6,rd:3, skill:'flame_strike',     cost:5 },
-  { name:'炽心守护',   race:'人类', t:4,b:7,l:4,r:6, ta:3,ba:6,la:3,ra:5, td:5,bd:8,ld:5,rd:7, skill:'rigid_body',       cost:3 },
-
-  // ===== 第二组（8张）—— 均衡型、流动/控制 =====
-  { name:'寒霜剑士',   race:'人类', t:5,b:7,l:6,r:4, skill:'freeze',           cost:4 },
-  // 深渊行者：低攻高防（盾型）
-  { name:'深渊行者',   race:'亡灵', t:4,b:8,l:5,r:5, ta:2,ba:5,la:3,ra:3, td:6,bd:9,ld:7,rd:7, skill:'iron_wall',        cost:3 },
-  { name:'水流使者',   race:'元素', t:6,b:6,l:7,r:3, skill:'absorb',           cost:4 },
-  { name:'海渊巨鲸',   race:'野兽', t:3,b:9,l:4,r:4, ta:2,ba:9,la:3,ra:3, td:4,bd:9,ld:5,rd:5, skill:'freeze',           cost:5 },
-  // 雾影忍者：高攻，但防御很脆
-  { name:'雾影忍者',   race:'人类', t:7,b:5,l:8,r:2, ta:8,ba:6,la:9,ra:3, td:5,bd:3,ld:6,rd:1, skill:'balanced',         cost:4 },
-  { name:'水晶守卫',   race:'元素', t:5,b:5,l:5,r:6, skill:'rigid_body',       cost:3 },
-  { name:'激流冲撞',   race:'元素', t:6,b:7,l:3,r:7, skill:'absorb',           cost:5 },
-  { name:'冰河领主',   race:'龙族', t:8,b:6,l:2,r:5, skill:'chain_lightning',  cost:6 },
-
-  // ===== 第三组（8张）—— 高防御、护盾/固化 =====
-  // 岩盾卫士：典型高防低攻
-  { name:'岩盾卫士',   race:'人类', t:3,b:8,l:7,r:4, ta:2,ba:5,la:4,ra:2, td:5,bd:9,ld:8,rd:6, skill:'iron_wall',        cost:3 },
-  { name:'自然德鲁伊', race:'人类', t:5,b:6,l:8,r:5, skill:'resonance',        cost:5 },
-  // 铁甲犀牛：均衡型偏防守
-  { name:'铁甲犀牛',   race:'野兽', t:4,b:9,l:5,r:3, ta:3,ba:7,la:4,ra:2, td:5,bd:9,ld:6,rd:4, skill:'iron_wall',        cost:4 },
-  { name:'荆棘缠绕',   race:'植物', t:6,b:5,l:9,r:2, skill:'flame_strike',     cost:5 },
-  { name:'大地之灵',   race:'元素', t:7,b:7,l:4,r:6, skill:'balanced',         cost:5 },
-  { name:'古树长老',   race:'植物', t:2,b:8,l:6,r:7, ta:1,ba:6,la:4,ra:5, td:4,bd:9,ld:8,rd:8, skill:'rigid_body',       cost:4 },
-  { name:'花岗岩魔',   race:'元素', t:5,b:9,l:3,r:5, skill:'iron_wall',        cost:4 },
-  { name:'生命之泉',   race:'元素', t:4,b:6,l:6,r:8, skill:'resonance',        cost:5 },
-
-  // ===== 第四组（8张）—— 高风险高回报、连锁 =====
-  // 雷霆战神：高攻低防（玻璃大炮）
-  { name:'雷霆战神',   race:'人类', t:9,b:2,l:8,r:3, ta:9,ba:2,la:9,ra:4, td:7,bd:1,ld:6,rd:2, skill:'chain_lightning', cost:7 },
-  { name:'电光先锋',   race:'人类', t:7,b:4,l:9,r:2, ta:8,ba:3,la:9,ra:2, td:5,bd:4,ld:7,rd:2, skill:'chain_lightning', cost:6 },
-  { name:'风暴召唤师', race:'人类', t:6,b:5,l:6,r:6, skill:'balanced',         cost:4 },
-  // 脉冲机甲：攻守均等
-  { name:'脉冲机甲',   race:'机械', t:8,b:3,l:4,r:7, skill:'flame_strike',    cost:5 },
-  { name:'雷纹刺客',   race:'人类', t:5,b:6,l:8,r:5, ta:6,ba:5,la:9,ra:6, td:4,bd:6,ld:6,rd:4, skill:'chain_lightning', cost:5 },
-  { name:'闪电鸟',     race:'野兽', t:8,b:1,l:7,r:4, ta:9,ba:1,la:8,ra:4, td:6,bd:1,ld:5,rd:3, skill:'chain_lightning', cost:6 },
-  { name:'磁场主宰',   race:'机械', t:4,b:7,l:5,r:8, skill:'rigid_body',      cost:4 },
-  { name:'超导核心',   race:'机械', t:6,b:4,l:6,r:9, ta:5,ba:3,la:5,ra:9, td:7,bd:5,ld:7,rd:9, skill:'absorb',          cost:5 },
-
-  // ===== 中性（8张）—— 均衡万能型 =====
-  { name:'虚空行者',   race:'亡灵', t:6,b:6,l:6,r:6, skill:'balanced',       cost:4 },
-  { name:'镜像分身',   race:'幻灵', t:5,b:5,l:7,r:7, skill:'rigid_body',     cost:3 },
-  { name:'混沌之核',   race:'元素', t:7,b:4,l:4,r:7, skill:null,              cost:3 },
-  { name:'原初晶体',   race:'元素', t:5,b:7,l:5,r:5, skill:'iron_wall',      cost:3 },
-  { name:'时空裂隙',   race:'幻灵', t:8,b:3,l:3,r:6, skill:null,              cost:3 },
-  { name:'均衡使者',   race:'人类', t:6,b:5,l:6,r:5, skill:'balanced',       cost:3 },
-  { name:'暗影潜伏',   race:'亡灵', t:4,b:8,l:7,r:3, skill:null,              cost:2 },
-  { name:'光辉守护',   race:'人类', t:7,b:6,l:3,r:8, skill:'rigid_body',     cost:4 },
-
   // ===== ⚔️ 特殊牌 =====
   { name:'骑士',       race:'人类', t:4,b:4,l:5,r:6, skill:'knight_assign',  cost:4 },
   // 国王：纯防御型，无攻击点数，拥有持续光环效果
@@ -1762,7 +1702,7 @@ function startOnlineGame(yourTurn, playerIdx) {
   opponentDeckCount = 28;
 
   // 创建牌堆
-  const playerPool = deckSelectedIndices.size >= 6
+  const playerPool = deckSelectedIndices.size >= 1
     ? Array.from(deckSelectedIndices)
     : CARD_DECK.map((c, i) => i);
   playerDeck = createShuffledDeck(playerPool);
@@ -2009,7 +1949,7 @@ function init() {
   currentMana = 1; maxMana = 1;
 
   // 创建牌堆并开局抽4张（如果有自定义卡组则使用）
-  const playerPool = deckSelectedIndices.size >= 6
+  const playerPool = deckSelectedIndices.size >= 1
     ? Array.from(deckSelectedIndices)
     : CARD_DECK.map((c, i) => i);
   playerDeck = createShuffledDeck(playerPool);
