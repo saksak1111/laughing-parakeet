@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>元素卡牌对决 v44</title>
+<title>元素卡牌对决 v45</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
@@ -2049,7 +2049,9 @@ function renderBoard() {
       const el = document.createElement('div');
       el.className = 'card-on-board';
       // 同时添加 owner 类和 flipped 类（flipped 只控制明暗，owner 控制颜色）
-      el.classList.add(c.owner === 'player' ? 'player-card' : 'ai-card');
+      if (c.owner === 'player') el.classList.add('player-card');
+      else if (c.owner === 'ai') el.classList.add('ai-card');
+      else el.classList.add('ai-card'); // 默认使用AI样式，避免不可见
       if (c.flipped) el.classList.add('flipped');
       if (c.locked) el.style.boxShadow = '0 0 12px #4090d066 inset';
       el.innerHTML = cardHtml(c, true);
@@ -2465,7 +2467,6 @@ function resolveCombat(idx, placerOwner) {
 
     if (enemyWin) {
       const wasFlipped = me.flipped;
-      me.flipped = false;
       me.owner = enemy.owner;
       const actionText = wasFlipped ? '夺回' : '反击翻转';
       logs.push(`<span style="color:#fe7e9e">${posName}反击！${enemy.name} ${actionText} ${me.name}(${enemyAtkVal} vs ${myDefVal})</span>`);
