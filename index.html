@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>元素卡牌对决 v41</title>
+<title>元素卡牌对决 v43</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
@@ -2007,14 +2007,17 @@ function cardHtml(c, onBoard) {
   function dirHtml(dir, cssClass) {
     const atk = c[`${dir}_atk`] !== undefined ? c[`${dir}_atk`] : c[dir];
     const def = c[`${dir}_def`] !== undefined ? c[`${dir}_def`] : c[dir];
+    // 应用国王光环加成到显示值
+    const displayAtk = getAtkVal(c, dir);
+    const displayDef = getDefVal(c, dir);
     if (atk === def) {
-      // 攻防相同：圆形显示（原来的样式）
-      return `<div class="side-val ${cssClass}">${atk}</div>`;
+      // 攻防相同：圆形显示（原来的样式），但显示加成后的值
+      return `<div class="side-val ${cssClass}">${displayAtk}</div>`;
     } else {
       // 攻防不同：三角形（攻）+ 正方形（防）
       return `<div class="side-val split-val ${cssClass}">
-        <span class="atk-tri">${atk}</span>
-        <span class="def-sq">${def}</span>
+        <span class="atk-tri">${displayAtk}</span>
+        <span class="def-sq">${displayDef}</span>
       </div>`;
     }
   }
@@ -2653,6 +2656,9 @@ function rotateCard(card, steps) {
     [c.t_atk, c.r_atk, c.b_atk, c.l_atk] = [c.l_atk, c.t_atk, c.r_atk, c.b_atk];
     // 防御值旋转
     [c.t_def, c.r_def, c.b_def, c.l_def] = [c.l_def, c.t_def, c.r_def, c.b_def];
+    // 原始攻防字段也要旋转，否则 normalizeCard 会用原始值覆盖
+    [c.ta, c.ra, c.ba, c.la] = [c.la, c.ta, c.ra, c.ba];
+    [c.td, c.rd, c.bd, c.ld] = [c.ld, c.td, c.rd, c.bd];
   }
   return c;
 }
