@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>元素卡牌对决 v51</title>
+<title>元素卡牌对决 v52</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
@@ -1092,8 +1092,21 @@ button:hover { background: #1a2440; border-color: #7eb8fe; }
   </div>
 </div>
 
-<!-- 国王"再次比较"选择弹窗 -->
-<div class="card-detail-overlay" id="king-duel-overlay">
+<!-- 白兔"逃跑"选择弹窗 -->
+<div class="card-detail-overlay" id="rabbit-escape-overlay">
+  <div class="card-detail-box" id="rabbit-escape-box" style="max-width:400px">
+    <div class="cd-header" style="margin-bottom:10px">
+      <div class="cd-name">🐰 白兔 · 逃跑</div>
+      <div style="color:#aaa;font-size:12px">选择逃跑目的地（十字方向空格）</div>
+    </div>
+    <div id="rabbit-escape-hint" style="text-align:center;color:#a0e080;font-size:13px;margin-bottom:12px">白兔拒绝被翻面！选择逃跑方向</div>
+    <div id="rabbit-escape-board" style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:14px">
+      <!-- 由 JS 动态生成棋盘缩略图 -->
+    </div>
+  </div>
+</div>
+
+<!-- 国王"再次比较"选择弹窗 --><div class="card-detail-overlay" id="king-duel-overlay">
   <div class="card-detail-box" id="king-duel-box" style="max-width:400px">
     <div class="cd-header" style="margin-bottom:10px">
       <div class="cd-name">👑 国王 · 再次比较</div>
@@ -1213,6 +1226,12 @@ const SKILLS = {
   king_aura: {
     type: 'aura', name: '王之威仪', icon: '👑',
     desc: '持续：场上未翻面时，所有我方人类阵营卡牌四个方向点数+1；放置时可选择一名友方单位，使其与相邻敌方再次进行战斗判定'
+  },
+
+  // === 特殊被动技能 ===
+  rabbit_escape: {
+    type: 'passive', name: '逃跑', icon: '🐰',
+    desc: '被攻击翻面时不会立刻翻面，而是沿十字方向逃跑（由玩家选择方向）；仅当四周无路可逃时才被翻面'
   }
 };
 
@@ -1226,6 +1245,8 @@ const CARD_DECK = [
   { name:'骑士',       race:'人类', t:4,b:4,l:5,r:6, skill:'knight_assign',  cost:4 },
   // 国王：纯防御型，无攻击点数，拥有持续光环效果
   { name:'国王',       race:'人类', t:0,b:0,l:0,r:0, ta:0,ba:0,la:0,ra:0, td:8,bd:8,ld:8,rd:8, skill:'king_aura',  cost:7 },
+  // 白兔：四方各2点，逃跑技能，被翻面时可逃至空格
+  { name:'白兔',       race:'野兽', t:2,b:2,l:2,r:2, skill:'rabbit_escape', cost:1 },
 ];
 
 // ========== 游戏状态 ==========
@@ -2456,6 +2477,7 @@ function resolveCombat(idx, placerOwner) {
   const me = board[idx];
   const mySk = getSkill(me);
   const logs = [];
+  _rabbitEscapePending = null; // 每次战斗重置
 
   // --- 主动技能：共振（放置时触发）---
   if (mySk && mySk.name === '共振') {
@@ -2505,6 +2527,23 @@ function resolveCombat(idx, placerOwner) {
 
     if (win) {
       const wasFlipped = enemy.flipped;
+      // === 白兔逃跑技能检测 ===
+      const enemySkill = getSkill(enemy);
+      if (enemySkill && enemySkill.name === '逃跑' && enemy.owner !== me.owner) {
+        // 检测是否有空格可逃
+        const escapeCells = NEIGHBORS[nIdx].filter(({ idx: eIdx }) => board[eIdx] === null);
+        if (escapeCells.length > 0) {
+          // 有路可逃，标记待处理，跳过翻转
+          if (!_rabbitEscapePending) {
+            _rabbitEscapePending = { rabbitIdx: nIdx, attackerOwner: me.owner };
+          }
+          const posName = POS_NAMES[nIdx];
+          logs.push(`<span style="color:#a0e080">🐰 [逃跑] ${posName}的白兔拒绝被翻面！</span>`);
+          return; // 不翻转，等待逃跑选择
+        }
+        // 无路可逃，正常翻转
+        logs.push(`<span style="color:#e08040">🐰 [逃跑] 无路可逃！白兔被翻面！</span>`);
+      }
       enemy.flipped = false;      // 翻回为正面
       enemy.owner = me.owner;     // 改变归属
       flippedIndices.push(nIdx);
@@ -2589,11 +2628,18 @@ function resolveCombat(idx, placerOwner) {
     return { kingDuel: true, idx, owner: placerOwner };
   }
 
+  // --- 白兔逃跑：需要UI交互 ---
+  if (_rabbitEscapePending) {
+    return { kingDuel: false, rabbitEscape: true, placerOwner };
+  }
+
   return { kingDuel: false };
 }
 
 // ========== 国王"再次比较"选择弹窗 ==========
 let _kingDuelPending = null; // { idx, owner }
+let _rabbitEscapePending = null; // { rabbitIdx, attackerOwner }
+let _rabbitEscapePlacerOwner = null; // 触发逃跑的那一方（谁放了卡）
 
 function showKingDuelPicker(result) {
   if (!result || !result.kingDuel) return false;
@@ -2718,6 +2764,141 @@ function kingDuelCancel() {
   }
 }
 
+// ========== 白兔逃跑 ==========
+function showRabbitEscapePicker(result) {
+  if (!result || !result.rabbitEscape || !_rabbitEscapePending) return false;
+  _rabbitEscapePlacerOwner = result.placerOwner;
+
+  const { rabbitIdx } = _rabbitEscapePending;
+  const overlay = document.getElementById('rabbit-escape-overlay');
+  const boardEl = document.getElementById('rabbit-escape-board');
+  boardEl.innerHTML = '';
+
+  // 可逃的空格（仅十字方向）
+  const escapeCells = new Set(
+    NEIGHBORS[rabbitIdx].filter(({ idx: eIdx }) => board[eIdx] === null).map(({ idx: eIdx }) => eIdx)
+  );
+
+  for (let i = 0; i < TOTAL; i++) {
+    const cell = document.createElement('div');
+    const c = board[i];
+    const isRabbit = i === rabbitIdx;
+    const isEscape = escapeCells.has(i);
+
+    cell.style.cssText = `
+      aspect-ratio:1; border-radius:6px;
+      display:flex; align-items:center; justify-content:center;
+      font-size:11px; text-align:center; padding:2px;
+      transition: all 0.15s;
+    `;
+
+    if (isRabbit) {
+      cell.style.background = '#1a3a1a';
+      cell.style.border = '2px solid #80e040';
+      cell.style.color = '#a0e080';
+      cell.textContent = '🐰';
+      cell.style.fontSize = '18px';
+    } else if (isEscape) {
+      cell.style.background = '#0d2a0d';
+      cell.style.border = '2px dashed #50c050';
+      cell.style.color = '#50c050';
+      cell.style.cursor = 'pointer';
+      cell.textContent = '→';
+      cell.addEventListener('click', () => rabbitEscapeSelect(i));
+      cell.addEventListener('mouseenter', () => {
+        cell.style.background = '#1a4a1a';
+        cell.style.borderColor = '#80e040';
+        cell.style.transform = 'scale(1.08)';
+      });
+      cell.addEventListener('mouseleave', () => {
+        cell.style.background = '#0d2a0d';
+        cell.style.borderColor = '#50c050';
+        cell.style.transform = 'scale(1)';
+      });
+    } else if (c) {
+      cell.style.background = c.owner === 'player' ? '#1a2a4a' : '#3a1a2a';
+      cell.style.border = '1.5px solid #2a3a5a';
+      cell.style.color = '#e0e6f0';
+      cell.textContent = c.name;
+      cell.style.opacity = '0.5';
+    } else {
+      cell.style.background = '#0a0e1a';
+      cell.style.border = '1px solid #1a2a3a';
+      cell.style.color = '#2a3a5a';
+      cell.textContent = '·';
+    }
+    boardEl.appendChild(cell);
+  }
+
+  overlay.classList.add('show');
+  return true;
+}
+
+function rabbitEscapeSelect(targetIdx) {
+  const overlay = document.getElementById('rabbit-escape-overlay');
+  overlay.classList.remove('show');
+
+  if (!_rabbitEscapePending) return;
+  const { rabbitIdx, attackerOwner } = _rabbitEscapePending;
+  const placerOwner = _rabbitEscapePlacerOwner;
+  _rabbitEscapePending = null;
+  _rabbitEscapePlacerOwner = null;
+
+  const rabbit = board[rabbitIdx];
+  if (!rabbit || board[targetIdx] !== null) return;
+
+  // 白兔移动到目标格
+  board[targetIdx] = { ...rabbit };
+  board[rabbitIdx] = null;
+
+  setBattleLog(`<span style="color:#a0e080">🐰 [逃跑] 白兔逃往了 ${POS_NAMES[targetIdx]}！</span>`);
+
+  // 渲染并继续后续流程
+  if (placerOwner === 'player') {
+    // 玩家放置后的白兔逃跑：抽牌→切换AI回合
+    if (playerDeck.length > 0 && hand.length < MAX_HAND_SIZE) {
+      const draw = drawFromDeck(playerDeck, 1);
+      hand.push(...draw.cards);
+      playerDeck = draw.deck;
+    }
+    renderBoard(); renderHand(); renderEnemyHand(); calcScore(); updateInfo();
+    if (board.every(c => c !== null)) { endGame(); return; }
+    isPlayerTurn = false;
+    updateInfo(); renderBoard(); renderEnemyHand();
+    if (isOnlineMode) {
+      if (window._lastPlaceIdx !== undefined && board[window._lastPlaceIdx]) {
+        sendPlaceCard(window._lastPlaceIdx, board[window._lastPlaceIdx]);
+      }
+    } else {
+      setTimeout(aiTurn, 800);
+    }
+  } else {
+    // AI放置后的白兔逃跑
+    finishAiTurn();
+  }
+}
+
+// AI 自动处理白兔逃跑
+function aiHandleRabbitEscape() {
+  if (!_rabbitEscapePending) return false;
+  const { rabbitIdx } = _rabbitEscapePending;
+  const escapeCells = NEIGHBORS[rabbitIdx]
+    .filter(({ idx: eIdx }) => board[eIdx] === null)
+    .map(({ idx: eIdx }) => eIdx);
+
+  if (escapeCells.length === 0) {
+    _rabbitEscapePending = null;
+    _rabbitEscapePlacerOwner = null;
+    return false;
+  }
+
+  // AI 随机选一个空格逃跑
+  const targetIdx = escapeCells[Math.floor(Math.random() * escapeCells.length)];
+  // 延迟一下让玩家看到日志
+  setTimeout(() => rabbitEscapeSelect(targetIdx), 500);
+  return true;
+}
+
 // ========== 旋转选择 ==========
 // 旋转变换：给定原始卡牌，顺时针旋转 N*90°
 // 同时旋转基础值(t/b/l/r)和攻防分离值(_atk/_def)
@@ -2811,6 +2992,7 @@ function rotConfirm() {
   selectedCard = null;
   _rotPendingIdx = null;
   _rotPendingCard = null;
+  window._lastPlaceIdx = idx; // 记录放置位置，供白兔逃跑回调使用
 
   const combatResult = resolveCombat(idx, 'player');
 
@@ -2823,6 +3005,13 @@ function rotConfirm() {
       renderBoard(); renderHand(); renderEnemyHand(); calcScore(); updateInfo();
       return;
     }
+  }
+
+  // 白兔逃跑：显示逃跑方向弹窗（玩家选择）
+  if (combatResult && combatResult.rabbitEscape) {
+    renderBoard(); renderHand(); renderEnemyHand(); calcScore(); updateInfo();
+    const showing = showRabbitEscapePicker(combatResult);
+    if (showing) return; // 等待用户选择逃跑方向
   }
 
   if (playerDeck.length > 0 && hand.length < MAX_HAND_SIZE) {
@@ -3070,6 +3259,13 @@ function aiTurn() {
       }, 600);
       return; // 等待kingDuelSelect中的finishAiTurn继续
     }
+  }
+
+  // 白兔逃跑：AI自动处理
+  if (combatResult && combatResult.rabbitEscape) {
+    renderBoard(); renderEnemyHand(); calcScore(); updateInfo();
+    _rabbitEscapePlacerOwner = 'ai'; // AI放置触发的逃跑
+    if (aiHandleRabbitEscape()) return; // 等待 AI 逃跑动作完成
   }
 
   finishAiTurn();
