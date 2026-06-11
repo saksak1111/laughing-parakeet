@@ -1,0 +1,4274 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>元素卡牌对决 v67</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #0a0e1a;
+  color: #e0e6f0;
+  font-family: 'Segoe UI', sans-serif;
+  min-height: 100vh;
+  display: flex; flex-direction: column; align-items: center;
+  user-select: none;
+}
+/* 允许特定元素被选中（用于复制功能） */
+.selectable, .selectable *, #waiting-room-id, #join-answer-code {
+  user-select: text !important;
+  -webkit-user-select: text !important;
+}
+h1 { margin-top: 14px; font-size: 22px; font-weight: 700; letter-spacing: 2px; color: #7eb8fe; text-shadow: 0 0 20px #1a4a9a88; }
+#info { margin: 8px 0 4px; font-size: 15px; min-height: 28px; color: #a0b8d8; }
+#info .hl { color: #7eb8fe; font-weight: 600; }
+#battle-log { min-height: 36px; font-size: 12px; color: #d4aa44; margin-bottom: 2px; max-width: 580px; text-align: center; line-height: 1.5; }
+
+#game-area {
+  display: flex; flex-direction: column;
+  align-items: center; gap: 8px;
+  margin-top: 6px;
+}
+
+/* 4×3 棋盘 */
+#board {
+  display: grid;
+  grid-template-columns: repeat(4, 150px);
+  grid-template-rows: repeat(3, 150px);
+  gap: 8px;
+}
+.cell {
+  width: 150px; height: 150px;
+  background: #121829; border: 2px solid #2a3a5a; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: all 0.15s; position: relative;
+}
+.cell:hover:not(.taken) { border-color: #5a8ad8; background: #1a2440; box-shadow: 0 0 14px #2a5aaa44; }
+.cell.taken { cursor: default; }
+
+/* ===== 棋盘卡牌 ===== */
+.card-on-board {
+  width: 130px; height: 130px;
+  border-radius: 10px;
+  display: grid;
+  grid-template-areas:
+    ". top ."
+    "left mid right"
+    ". bot .";
+  grid-template-columns: 1fr auto 1fr;
+  grid-template-rows: auto 1fr auto;
+  position: relative;
+  box-shadow: 0 4px 16px #0004;
+  padding: 3px;
+}
+.card-on-board .side-val {
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 20px; line-height: 1;
+  border-radius: 50%; width: 32px; height: 32px;
+}
+.card-on-board .top  { grid-area: top;  justify-self: center; }
+.card-on-board .bot  { grid-area: bot;  justify-self: center; }
+.card-on-board .left { grid-area: left; align-self: center; justify-self: end; }
+.card-on-board .right{ grid-area: right; align-self: center; justify-self: start; }
+
+/* 卡牌中间：名字 + 技能标签 */
+.card-on-board .mid {
+  grid-area: mid; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+}
+.card-name { font-size: 10px; font-weight: 600; letter-spacing: 0.5px; opacity: 0.7; text-align: center;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.card-skill-tag { font-size: 7px; opacity: 0.45; letter-spacing: 0.3px; border: 1px solid currentColor;
+  border-radius: 3px; padding: 0 3px; line-height: 1.2; }
+
+/* 玩家卡牌 - 蓝色系基底 + 元素色调 */
+.card-on-board.player-card {
+  background: linear-gradient(135deg, #14285a, #081430); border: 2px solid #3a70c8;
+}
+.card-on-board.player-card .side-val { background: rgba(58,112,200,0.3); color: #7eb8fe; }
+
+/* AI卡牌 - 红色系基底 + 元素色调 */
+.card-on-board.ai-card {
+  background: linear-gradient(135deg, #4a1528, #20080f); border: 2px solid #c83a5a;
+}
+.card-on-board.ai-card .side-val { background: rgba(200,58,90,0.3); color: #fe7e9e; }
+
+
+/* 翻转的牌（翻面状态 - 颜色变淡但仍显示当前归属方） */
+.card-on-board.flipped.player-card {
+  background: linear-gradient(135deg, #0f1f3d, #060c1a) !important;
+  border-color: #2a5080 !important;
+  filter: brightness(0.6);
+}
+.card-on-board.flipped.ai-card {
+  background: linear-gradient(135deg, #2d0f1a, #12050a) !important;
+  border-color: #802a40 !important;
+  filter: brightness(0.6);
+}
+.card-on-board.flipped .side-val { opacity: 0.5; }
+.card-on-board.flipped .card-name { opacity: 0.3; }
+.card-on-board.flipped .card-skill-tag { opacity: 0.15; }
+
+/* ===== 手牌区 ===== */
+#hand-area { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+#hand-label { font-size: 13px; color: #7eb8fe; letter-spacing: 1px; }
+#hand { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; max-width: 800px; }
+
+/* ===== 敌方手牌区（棋盘上方） ===== */
+#enemy-hand-area {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+}
+#enemy-hand-label {
+  font-size: 13px; color: #fe7e9e; letter-spacing: 1px;
+}
+#enemy-hand {
+  display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; max-width: 800px;
+}
+.enemy-hand-card {
+  width: 94px; height: 124px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #2a1528, #14080f);
+  border: 2px solid #5a2a3a;
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+  opacity: 0.7;
+}
+.enemy-hand-card .card-back {
+  width: 60px; height: 80px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #3a1a28, #1a0a14);
+  border: 1.5px solid #6a2a3a;
+  display: flex; align-items: center; justify-content: center;
+}
+.enemy-hand-card .card-back::after {
+  content: '?';
+  font-size: 28px; font-weight: 700; color: #5a2a3a;
+}
+
+.hand-card {
+  width: 94px; height: 124px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #14285a, #081430);
+  border: 2px solid #3a60a0;
+  display: grid;
+  grid-template-areas:
+    ". top ."
+    "left mid right"
+    ". bot .";
+  grid-template-columns: 1fr auto 1fr;
+  grid-template-rows: auto 1fr auto;
+  cursor: pointer; transition: all 0.15s; color: #7eb8fe;
+  padding: 2px; position: relative;
+}
+.hand-card:hover { transform: translateY(-10px); border-color: #7eb8fe; box-shadow: 0 8px 24px #1a4a9a44; z-index: 2; }
+.hand-card.selected { transform: translateY(-14px); border-color: #aaddff; box-shadow: 0 8px 28px #2a6abb66; z-index: 3; }
+
+
+.hand-card .side-val {
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 17px; line-height: 1;
+  border-radius: 50%; width: 26px; height: 26px;
+  background: rgba(58,96,160,0.25); color: #7eb8fe;
+}
+.hand-card .top  { grid-area: top;  justify-self: center; }
+.hand-card .bot  { grid-area: bot;  justify-self: center; }
+.hand-card .left { grid-area: left; align-self: center; justify-self: end; }
+.hand-card .right{ grid-area: right; align-self: center; justify-self: start; }
+
+/* 手牌中间：名字 + 技能 */
+.hand-card .mid {
+  grid-area: mid; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+}
+.hand-card .card-name { font-size: 9px; font-weight: 700; opacity: 0.85; letter-spacing: 0.5px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.hand-card .card-skill-tag { font-size: 7px; opacity: 0.6; letter-spacing: 0.3px;
+  border: 1px solid currentColor; border-radius: 3px; padding: 0 4px; line-height: 1.3; }
+
+
+/* ===== 费用角标（卡牌左上角）===== */
+.cost-badge {
+  position: absolute; top: -4px; left: -4px; z-index: 5;
+  background: linear-gradient(135deg, #f0c040, #d4982a);
+  color: #1a1208; font-size: 11px; font-weight: 800;
+  width: 22px; height: 22px; border-radius: 50% 50% 50% 3px;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 2px 8px #0006, inset 0 1px 0 rgba(255,255,255,0.35);
+  line-height: 1; letter-spacing: -0.5px;
+}
+.card-on-board .cost-badge { width: 24px; height: 24px; font-size: 12px; top: -4px; left: -4px; }
+.hand-card .cost-badge { width: 22px; height: 22px; font-size: 11px; }
+.deck-card-item .cost-badge { width: 24px; height: 24px; font-size: 12px; }
+
+/* ===== 种族标签（卡牌右下角）===== */
+.race-badge {
+  position: absolute; bottom: 2px; right: 3px; z-index: 4;
+  font-size: 7px; font-weight: 600; letter-spacing: 0.3px;
+  color: #a0a8b8; opacity: 0.65;
+  background: rgba(10,14,26,0.5);
+  padding: 1px 4px; border-radius: 3px;
+  line-height: 1.2; white-space: nowrap;
+}
+.card-on-board .race-badge { font-size: 6px; bottom: 1px; right: 2px; padding: 0 3px; }
+.hand-card .race-badge { font-size: 7px; bottom: 2px; right: 3px; }
+.deck-card-item .race-badge { font-size: 8px; bottom: 3px; right: 4px; opacity: 0.8; }
+
+/* 手牌不可用（费用不足）状态 */
+.hand-card.cant-afford {
+  opacity: 0.38; filter: grayscale(0.7) brightness(0.55);
+  cursor: not-allowed !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+.hand-card.cant-afford:hover { transform: none !important; border-color: inherit !important; }
+
+/* ===== 费用栏 UI ===== */
+#mana-bar {
+  display: flex; align-items: center; gap: 6px;
+  margin: 4px auto 2px; padding: 5px 16px;
+  background: rgba(18,24,42,0.85); border: 1px solid #3a4a6a; border-radius: 20px;
+  font-size: 13px; min-width: 200px; justify-content: center;
+}
+#mana-bar .mana-label { color: #8898b8; font-size: 12px; }
+#mana-gems { display: flex; gap: 3px; }
+.mana-gem {
+  width: 18px; height: 18px; border-radius: 4px;
+  background: linear-gradient(135deg, #3a4a6a, #222a40);
+  border: 1.5px solid #4a5a7a; transition: all 0.2s;
+}
+.mana-gem.filled {
+  background: linear-gradient(135deg, #f0c040, #e8a820);
+  border-color: #f0c040;
+  box-shadow: 0 0 8px #f0c04044;
+}
+.mana-gem-spent {
+  background: linear-gradient(135deg, #3a3040, #282038);
+  border-color: #5a4a6a;
+  opacity: 0.45;
+}
+#mana-text {
+  color: #f0c040; font-weight: 700; font-size: 14px;
+  min-width: 42px; text-align: center;
+}
+
+/* ===== 技能提示 tooltip ===== */
+.tooltip-box {
+  position: fixed; left: 0; top: 0; z-index: 1000;
+  background: rgba(10,14,26,0.95); border: 1px solid #4a6a9a; border-radius: 8px;
+  padding: 10px 14px; max-width: 240px;
+  font-size: 12px; color: #d0dae8; line-height: 1.6;
+  pointer-events: none; opacity: 0; transition: opacity 0.15s;
+  box-shadow: 0 8px 32px #0008;
+}
+.tooltip-box.show { opacity: 1; }
+.tooltip-box .tt-name { font-size: 14px; font-weight: 700; color: #7eb8fe; margin-bottom: 4px; }
+.tooltip-box .tt-skill { color: #d4aa44; margin-bottom: 4px; }
+.tooltip-box .tt-desc { font-size: 11px; color: #98a8b8; }
+.tooltip-box .tt-stats { margin-top: 6px; font-size: 11px; color: #a0b8c8;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 2px; }
+
+/* ===== 旋转选择弹窗 ===== */
+#rotation-overlay {
+  position: fixed; inset: 0; z-index: 2100;
+  background: rgba(0,0,0,0.65); backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; pointer-events: none; transition: opacity 0.2s;
+}
+#rotation-overlay.show { opacity: 1; pointer-events: auto; }
+#rotation-box {
+  width: 380px; border-radius: 14px;
+  background: linear-gradient(145deg, #151e38, #0c1224);
+  border: 2px solid #3a5a8a; box-shadow: 0 16px 48px #000a;
+  padding: 20px 20px 16px;
+  animation: detailPopIn 0.2s ease-out;
+}
+.rot-title {
+  text-align: center; font-size: 15px; font-weight: 700;
+  color: #7eb8fe; letter-spacing: 2px; margin-bottom: 4px;
+}
+.rot-hint {
+  text-align: center; font-size: 11px; color: #6888aa;
+  margin-bottom: 14px;
+}
+.rot-single-preview {
+  display: flex; align-items: center; justify-content: center; gap: 14px;
+  margin-bottom: 8px;
+}
+/* 迷你卡牌预览（旋转选项内） */
+.rot-card-preview {
+  width: 120px; height: 120px;
+  border-radius: 10px;
+  border: 1.5px solid #3a70c8;
+  background: linear-gradient(135deg, #14285a, #081430);
+  padding: 4px;
+  position: relative;
+}
+.rot-card-preview .rp-val {
+  position: absolute;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 14px;
+  border-radius: 50%; width: 28px; height: 28px;
+  background: rgba(58,112,200,0.3); color: #7eb8fe;
+  z-index: 5;
+}
+/* 四个方向数值 - 绝对定位于四边中间（考虑padding） */
+.rot-card-preview .rp-top  { top: 4px;   left: 50%; transform: translateX(-50%); }
+.rot-card-preview .rp-bot  { bottom: 4px; left: 50%; transform: translateX(-50%); }
+.rot-card-preview .rp-left { left: 4px;  top: 50%; transform: translateY(-50%); }
+.rot-card-preview .rp-right{ right: 4px; top: 50%; transform: translateY(-50%); }
+.rot-card-preview .rp-mid  {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 8px; color: #6888aa; letter-spacing: 0.3px; text-align: center;
+  padding: 0 2px;
+  max-width: 80%;
+  line-height: 1.2;
+  overflow: hidden;
+  z-index: 4;
+}
+.rot-confirm-row {
+  display: flex; gap: 10px; justify-content: center;
+}
+/* ===== 道具牌使用确认弹窗 ===== */
+#spell-overlay {
+  position: fixed; inset: 0; z-index: 2100;
+  background: rgba(0,0,0,0.65); backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; pointer-events: none; transition: opacity 0.2s;
+}
+#spell-overlay.show { opacity: 1; pointer-events: auto; }
+#spell-box {
+  width: 320px; border-radius: 14px;
+  background: linear-gradient(145deg, #151e38, #0c1224);
+  border: 2px solid #f0c040; box-shadow: 0 16px 48px #000a, 0 0 24px #f0c04022;
+  padding: 20px 20px 16px;
+  animation: detailPopIn 0.2s ease-out;
+}
+.spell-title {
+  text-align: center; font-size: 16px; font-weight: 700;
+  color: #f0c040; letter-spacing: 2px; margin-bottom: 6px;
+}
+.spell-name {
+  text-align: center; font-size: 18px; font-weight: 700;
+  color: #fff; margin-bottom: 4px;
+}
+.spell-desc {
+  text-align: center; font-size: 12px; color: #888;
+  margin-bottom: 16px; line-height: 1.5;
+}
+.spell-cost-row {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  margin-bottom: 16px;
+}
+.spell-cost-row .cost-label { font-size: 13px; color: #7eb8fe; }
+.spell-cost-row .cost-value { font-size: 16px; font-weight: 700; color: #7eb8fe; }
+
+/* 道具牌大图标（手牌/棋盘上，替代四周数值）*/
+.spell-card-icon {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -60%);
+  font-size: 36px;
+  line-height: 1;
+  pointer-events: none;
+  z-index: 2;
+}
+.hand-card .spell-card-icon { font-size: 30px; transform: translate(-50%, -62%); }
+.card-on-board .spell-card-icon { font-size: 38px; transform: translate(-50%, -58%); }
+
+/* 道具牌：金色边框 + 特殊背景 */
+.hand-card.spell-card {
+  border-color: #c8a030 !important;
+  background: linear-gradient(145deg, #1e1805, #151005) !important;
+  box-shadow: 0 0 10px #c8a03033 !important;
+}
+.hand-card.spell-card:hover {
+  border-color: #f0c040 !important;
+  box-shadow: 0 8px 24px #c8a03066 !important;
+  transform: translateY(-10px);
+}
+
+
+/* 旋转预览中的攻防分离值 */
+.rot-card-preview .split-val {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  border-radius: 4px !important;
+  background: transparent !important;
+  width: auto !important;
+  height: auto !important;
+  min-width: 22px;
+  padding: 2px 0;
+}
+.rot-card-preview .split-val .atk-tri {
+  width: 18px; height: 14px;
+  font-size: 8px;
+  padding-bottom: 1px;
+}
+.rot-card-preview .split-val .def-sq {
+  width: 14px; height: 14px;
+  font-size: 8px;
+}
+
+/* ===== 攻防分离：三角形（攻击）+ 正方形（防御）===== */
+.side-val.split-val {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  /* 覆盖父级圆形样式 */
+  border-radius: 4px !important;
+  background: transparent !important;
+  width: auto !important;
+  height: auto !important;
+  min-width: 22px;
+}
+
+/* 三角形：攻击值 */
+.atk-tri {
+  /* 用 clip-path 做三角形 */
+  width: 22px; height: 18px;
+  border: none;
+  background: rgba(255,120,60,0.75);
+  clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+  display: flex; align-items: center; justify-content: center;
+  color: #fff;
+  font-size: 10px; font-weight: 800;
+  text-shadow: 0 1px 2px #0008;
+  line-height: 1;
+  padding-bottom: 2px;
+  border-radius: 0 !important;
+  position: relative;
+}
+
+/* 正方形：防御值 */
+.def-sq {
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 10px; line-height: 1;
+  width: 18px; height: 18px;
+  background: rgba(60,140,255,0.65);
+  border-radius: 3px !important;
+  color: #fff;
+  text-shadow: 0 1px 2px #0008;
+  border: 1px solid rgba(100,180,255,0.5);
+}
+
+/* 棋盘上的分离值尺寸微调 */
+.card-on-board .atk-tri { width: 24px; height: 20px; font-size: 11px; padding-bottom: 1px; color: #fff !important; }
+.card-on-board .def-sq  { width: 20px; height: 20px; font-size: 11px; color: #fff !important; }
+
+/* ===== Buff/Nerf 数值颜色 ===== */
+.val-buff { color: #50c878 !important; text-shadow: 0 0 6px #50c87866 !important; }
+.val-nerf { color: #e06040 !important; text-shadow: 0 0 6px #e0604066 !important; }
+/* 棋盘上的 buff/nerf 更醒目 */
+.card-on-board .val-buff,
+.card-on-board .side-val.val-buff { color: #50c878 !important; text-shadow: 0 0 8px #50c87888 !important; font-weight: 800 !important; }
+.card-on-board .val-nerf,
+.card-on-board .side-val.val-nerf { color: #e06040 !important; text-shadow: 0 0 8px #e0604088 !important; font-weight: 800 !important; }
+/* 攻防分离值的 buff/nerf */
+.card-on-board .atk-tri.val-buff { background: rgba(80,200,120,0.85) !important; }
+.card-on-board .atk-tri.val-nerf { background: rgba(224,96,64,0.85) !important; }
+.card-on-board .def-sq.val-buff { background: rgba(80,200,120,0.75) !important; border-color: rgba(80,200,120,0.8) !important; }
+.card-on-board .def-sq.val-nerf { background: rgba(224,96,64,0.75) !important; border-color: rgba(224,96,64,0.8) !important; }
+
+
+/* ===== 旋转预览中的分离值 ===== */
+/* 使用更高优先级选择器确保覆盖全局样式 */
+.rot-card-preview > .rp-val.split-val,
+.rot-card-preview .rp-val.split-val {
+  position: absolute !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-direction: column; gap: 1px;
+  border-radius: 2px !important; background: transparent !important;
+  width: auto !important; height: auto !important; min-width: 18px;
+  z-index: 5 !important;
+}
+/* 绝对定位覆盖 - 确保分离值也在正确位置 */
+.rot-card-preview > .rp-val.split-val.rp-top,
+.rot-card-preview .rp-val.split-val.rp-top    { top: 4px;   left: 50%; transform: translateX(-50%); }
+.rot-card-preview > .rp-val.split-val.rp-bot,
+.rot-card-preview .rp-val.split-val.rp-bot    { bottom: 4px; left: 50%; transform: translateX(-50%); }
+.rot-card-preview > .rp-val.split-val.rp-left,
+.rot-card-preview .rp-val.split-val.rp-left   { left: 4px;  top: 50%; transform: translateY(-50%); }
+.rot-card-preview > .rp-val.split-val.rp-right,
+.rot-card-preview .rp-val.split-val.rp-right  { right: 4px; top: 50%; transform: translateY(-50%); }
+.rot-card-preview .atk-tri { width: 16px; height: 13px; font-size: 8px; padding-bottom: 1px; color: #fff !important; }
+.rot-card-preview .def-sq  { width: 14px; height: 14px; font-size: 8px; color: #fff !important; }
+
+/* ===== 卡牌详情弹窗（右键查看）===== */
+.card-detail-overlay {
+  position: fixed; inset: 0; z-index: 2000;
+  background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; pointer-events: none; transition: opacity 0.2s;
+}
+.card-detail-overlay.show { opacity: 1; pointer-events: auto; }
+.card-detail-box {
+  width: 300px; border-radius: 14px;
+  background: linear-gradient(145deg, #151e38, #0c1224);
+  border: 2px solid #3a5a8a; box-shadow: 0 16px 48px #000a, 0 0 32px #1a3a6a22;
+  padding: 20px; position: relative;
+  animation: detailPopIn 0.25s ease-out;
+}
+@keyframes detailPopIn {
+  from { transform: scale(0.9) translateY(12px); opacity: 0; }
+  to { transform: scale(1) translateY(0); opacity: 1; }
+}
+.card-detail-close {
+  position: absolute; top: 10px; right: 12px;
+  background: none; border: none; color: #6888aa; font-size: 20px; cursor: pointer;
+  line-height: 1; padding: 2px 6px; border-radius: 6px; transition: all 0.15s;
+}
+.card-detail-close:hover { color: #e06040; background: rgba(224,96,64,0.1); }
+
+.cd-header { text-align: center; margin-bottom: 14px; }
+.cd-name {
+  font-size: 22px; font-weight: 800; letter-spacing: 2px;
+  margin-bottom: 4px;
+}
+.cd-cost-badge {
+  display: inline-block; background: linear-gradient(135deg, #f0c040, #d4982a);
+  color: #1a1208; font-weight: 800; font-size: 14px;
+  padding: 3px 12px; border-radius: 20px; margin-top: 6px;
+  box-shadow: 0 2px 8px #f0c04033;
+}
+
+.cd-stats-grid {
+  display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 6px; margin-bottom: 14px;
+}
+.cd-stat {
+  text-align: center; background: rgba(30,46,80,0.6); border-radius: 8px;
+  padding: 8px 4px; border: 1px solid #2a3a5a44;
+}
+.cd-stat-val { font-size: 22px; font-weight: 800; line-height: 1; min-height: 28px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.cd-stat-dir { font-size: 10px; opacity: 0.5; margin-top: 2px; letter-spacing: 1px; }
+
+.cd-skill-section { margin-bottom: 12px; }
+.cd-skill-label { font-size: 11px; color: #6888aa; margin-bottom: 4px; letter-spacing: 1px; }
+.cd-skill-name { font-size: 15px; font-weight: 700; color: #d4aa44; margin-bottom: 3px; }
+.cd-skill-desc { font-size: 12px; color: #98a8b8; line-height: 1.55; }
+.cd-no-skill { font-size: 12px; color: #5a6a7a; font-style: italic; }
+
+/* ===== Buff 效果显示 ===== */
+.cd-buff-section { margin-bottom: 12px; }
+.cd-buffs { display: flex; flex-direction: column; gap: 6px; }
+.cd-buff-item {
+  display: flex; align-items: center; gap: 8px;
+  background: rgba(40,60,30,0.5); border: 1px solid #4a7a3a44;
+  border-radius: 8px; padding: 8px 10px;
+}
+.cd-buff-icon { font-size: 16px; flex-shrink: 0; }
+.cd-buff-info { flex: 1; }
+.cd-buff-name { font-size: 13px; font-weight: 700; color: #7ec850; }
+.cd-buff-desc { font-size: 11px; color: #98b888; margin-top: 1px; }
+.cd-buff-source { font-size: 10px; color: #6a8a5a; font-style: italic; }
+
+/* ===== 卡牌详情弹窗：旋转预览区 ===== */
+.cd-rotate-section {
+  margin-top: 14px;
+  text-align: center;
+}
+.cd-rotate-label {
+  font-size: 11px; color: #6888aa; margin-bottom: 8px; letter-spacing: 1px;
+}
+.cd-rotate-wrap {
+  display: flex; align-items: center; justify-content: center; gap: 14px;
+}
+.cd-rot-btn {
+  width: 38px; height: 38px; border-radius: 50%;
+  background: rgba(30,46,80,0.8); border: 1.5px solid #3a5a8a;
+  color: #7eb8fe; font-size: 20px; cursor: pointer; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s; flex-shrink: 0;
+}
+.cd-rot-btn:hover {
+  background: #1a3a6a; border-color: #7eb8fe; color: #fff;
+  transform: scale(1.1);
+}
+.cd-rot-btn:active { transform: scale(0.95); }
+.cd-rotate-preview-container {
+  width: 130px; height: 130px;
+  display: flex; align-items: center; justify-content: center;
+}
+/* 旋转动画 */
+.cd-rotate-preview-container .rot-card-preview {
+  transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1);
+}
+/* 详情弹窗旋转预览：使用 grid 布局（与手牌一致），旋转时数值位置正确 */
+#cd-preview-card.rot-card-preview,
+#rot-preview-card.rot-card-preview {
+  width: 110px !important; height: 110px !important;
+  display: grid !important;
+  grid-template-areas:
+    ". top ."
+    "left mid right"
+    ". bot .";
+  grid-template-columns: 1fr auto 1fr !important;
+  grid-template-rows: auto 1fr auto !important;
+  padding: 2px !important;
+}
+/* 覆盖绝对定位，使用 grid-area 定位 */
+#cd-preview-card.rot-card-preview .side-val,
+#rot-preview-card.rot-card-preview .side-val {
+  position: static !important;
+  width: 26px !important; height: 26px !important;
+  font-size: 15px !important;
+  transform: none !important;
+}
+#cd-preview-card.rot-card-preview .top,
+#rot-preview-card.rot-card-preview .top  {
+  grid-area: top;  justify-self: center; align-self: start;
+}
+#cd-preview-card.rot-card-preview .bot,
+#rot-preview-card.rot-card-preview .bot  {
+  grid-area: bot;  justify-self: center; align-self: end;
+}
+#cd-preview-card.rot-card-preview .left,
+#rot-preview-card.rot-card-preview .left {
+  grid-area: left; align-self: center; justify-self: start;
+}
+#cd-preview-card.rot-card-preview .right,
+#rot-preview-card.rot-card-preview .right{
+  grid-area: right; align-self: center; justify-self: end;
+}
+#cd-preview-card.rot-card-preview .mid,
+#rot-preview-card.rot-card-preview .mid  {
+  position: static !important;
+  grid-area: mid;
+  transform: none !important;
+  align-self: center; justify-self: center;
+  font-size: 8px !important;
+}
+/* 攻防分离值在 grid 中的样式 */
+#cd-preview-card.rot-card-preview .side-val.split-val,
+#rot-preview-card.rot-card-preview .side-val.split-val {
+  width: auto !important; height: auto !important;
+  min-width: 22px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 1px !important;
+  background: transparent !important;
+  border-radius: 2px !important;
+}
+#cd-preview-card.rot-card-preview .atk-tri,
+#rot-preview-card.rot-card-preview .atk-tri {
+  width: 20px !important; height: 16px !important;
+  font-size: 9px !important;
+}
+#cd-preview-card.rot-card-preview .def-sq,
+#rot-preview-card.rot-card-preview .def-sq {
+  width: 18px !important; height: 18px !important;
+  font-size: 9px !important;
+}
+.cd-rotate-hint {
+  font-size: 11px; color: #5a7a9a; margin-top: 6px; letter-spacing: 1px;
+}
+
+.cd-bar-chart { margin-top: 10px; }
+.cd-bar-row { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; font-size: 11px; }
+.cd-bar-label { width: 28px; text-align: right; opacity: 0.6; }
+.cd-bar-track { flex: 1; height: 8px; background: #1a2440; border-radius: 4px; overflow: hidden; }
+.cd-bar-fill { height: 100%; border-radius: 4px; transition: width 0.3s; }
+.cd-bar-val { width: 18px; opacity: 0.7; }
+
+#score-area { display: flex; gap: 24px; margin-top: 8px; font-size: 14px; }
+#score-area .sc { text-align: center; }
+#score-area .num { font-size: 26px; font-weight: 700; }
+
+#btn-area { margin: 10px 0 10px; display: flex; gap: 12px; }
+/* 跳过回合按钮 */
+#skip-btn {
+  padding: 8px 22px; border-radius: 8px; border: 1.5px solid #6a5a3a;
+  background: #1a1810; color: #d4aa44; font-size: 14px; cursor: pointer;
+  transition: all 0.15s;
+}
+#skip-btn:hover { background: #2a2418; border-color: #d4aa44; }
+#skip-btn:disabled {
+  opacity: 0.35; cursor: not-allowed;
+  border-color: #4a4a3a; color: #6a6a5a;
+}
+#skip-btn:disabled:hover { background: #1a1810; border-color: #4a4a3a; }
+
+button { padding: 8px 22px; border-radius: 8px; border: 1.5px solid #3a6aaa; background: #121829; color: #7eb8fe; font-size: 14px; cursor: pointer; transition: all 0.15s; }
+button:hover { background: #1a2440; border-color: #7eb8fe; }
+
+#rules { max-width: 560px; font-size: 11px; color: #6888aa; line-height: 1.65; text-align: center; margin-bottom: 12px; }
+#rules .hl-w { color:#e06040 } #rules .hl-wt { color:#4090d0 } #rules .hl-g { color:#50b060 } #rules .hl-p { color:#a060d0 } #rules .hl-y { color:#d4aa44 }
+
+/* ===== 主菜单 ===== */
+#main-menu {
+  position: fixed; inset: 0; z-index: 100;
+  background: #0a0e1a;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 28px;
+}
+#main-menu.hidden { display: none; }
+.menu-title {
+  font-size: 48px; font-weight: 900; letter-spacing: 6px;
+  background: linear-gradient(135deg, #7eb8fe, #a060d0, #e06040);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text; text-shadow: none;
+  animation: titleGlow 3s ease-in-out infinite alternate;
+}
+@keyframes titleGlow {
+  from { filter: drop-shadow(0 0 20px #1a4a9a55); }
+  to { filter: drop-shadow(0 0 40px #a060d055); }
+}
+.menu-subtitle { font-size: 14px; color: #5a7a9a; letter-spacing: 4px; margin-top: -16px; }
+.menu-btns { display: flex; flex-direction: column; gap: 14px; margin-top: 10px; }
+.menu-btn {
+  padding: 14px 56px; border-radius: 12px; border: 2px solid;
+  font-size: 18px; font-weight: 700; cursor: pointer;
+  transition: all 0.25s; letter-spacing: 3px;
+  min-width: 240px; text-align: center;
+  position: relative; overflow: hidden;
+}
+.menu-btn::after {
+  content: ''; position: absolute; inset: 0; opacity: 0; transition: opacity 0.25s;
+  background: linear-gradient(135deg, rgba(255,255,255,0.08), transparent);
+}
+.menu-btn:hover::after { opacity: 1; }
+.btn-start {
+  border-color: #3a8ada; background: linear-gradient(135deg, #122848, #081830);
+  color: #7eb8fe; box-shadow: 0 0 24px #1a4aaa33, inset 0 1px 0 rgba(126,184,254,0.15);
+}
+.btn-start:hover {
+  border-color: #7eb8fe; transform: translateY(-3px);
+  box-shadow: 0 8px 32px #2a6abb55, inset 0 1px 0 rgba(126,184,254,0.25);
+}
+.btn-deck {
+  border-color: #8a6aba; background: linear-gradient(135deg, #1a1838, #100c20);
+  color: #b89ae0; box-shadow: 0 0 24px #4a2a8833, inset 0 1px 0 rgba(184,154,224,0.15);
+}
+.btn-deck:hover {
+  border-color: #b89ae0; transform: translateY(-3px);
+  box-shadow: 0 8px 32px #6a3aa855, inset 0 1px 0 rgba(184,154,224,0.25);
+}
+.menu-footer { position: absolute; bottom: 20px; font-size: 11px; color: #3a5070; }
+
+/* ===== 游戏视图容器 ===== */
+#game-view { transition: opacity 0.35s ease; }
+#game-view.hidden { display: none; }
+
+/* ===== 卡组编辑器 ===== */
+#deck-view {
+  position: fixed; inset: 0; z-index: 90;
+  background: #0a0e1a;
+  overflow-y: auto;
+  display: flex; flex-direction: column; align-items: center; padding-bottom: 30px;
+}
+#deck-view.hidden { display: none; }
+#online-menu.hidden { display: none; }
+#waiting-room.hidden { display: none; }
+.deck-header {
+  margin-top: 18px; text-align: center;
+}
+.deck-header h2 {
+  font-size: 26px; font-weight: 700; color: #b89ae0; letter-spacing: 3px;
+}
+.deck-header p { font-size: 12px; color: #6888aa; margin-top: 4px; }
+
+/* 种族筛选栏 */
+.race-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  max-width: 860px;
+  width: 95%;
+  margin: 10px 0 16px;
+  padding: 0 10px;
+}
+.race-filter-btn {
+  padding: 6px 16px;
+  border-radius: 20px;
+  border: 1.5px solid #3a4a6a;
+  background: #121829;
+  color: #8898b8;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.race-filter-btn:hover {
+  border-color: #5a7a9a;
+  color: #b0c0e0;
+  background: #1a2440;
+}
+.race-filter-btn.active {
+  border-color: #f0c040;
+  color: #f0c040;
+  background: rgba(240, 192, 64, 0.1);
+  font-weight: 600;
+}
+
+/* 种族分组标题 */
+.race-group-title {
+  width: 100%;
+  max-width: 860px;
+  margin: 20px 0 10px;
+  padding: 0 10px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #b89ae0;
+  letter-spacing: 2px;
+  border-bottom: 1px solid #2a3a5a;
+  padding-bottom: 8px;
+}
+
+/* 卡组卡牌网格 */
+.deck-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 12px;
+  max-width: 860px; width: 95%;
+  padding: 0 10px;
+}
+
+/* 单张卡组卡牌 */
+.deck-card-item {
+  width: 140px; height: 180px;
+  border-radius: 10px;
+  display: grid;
+  grid-template-areas:
+    ". top ."
+    "left mid right"
+    ". bot .";
+  grid-template-columns: 1fr auto 1fr;
+  grid-template-rows: auto 1fr auto;
+  padding: 3px;
+  cursor: pointer; transition: all 0.15s; position: relative;
+  border: 2px solid #3a4a6a; background: linear-gradient(135deg, #121a30, #0a1020);
+}
+.deck-card-item:hover { transform: translateY(-6px); z-index: 2; box-shadow: 0 8px 24px #0006; }
+.deck-card-item.selected-deck {
+  border-color: #f0c040 !important;
+  box-shadow: 0 0 20px #f0c04033, 0 8px 24px #0006;
+  transform: translateY(-8px); z-index: 3;
+}
+.deck-card-item .side-val {
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 16px; line-height: 1;
+  border-radius: 50%; width: 26px; height: 26px; color: #a0b8d8;
+  background: rgba(58,74,106,0.3);
+}
+.deck-card-item .top  { grid-area: top;  justify-self: center; }
+.deck-card-item .bot  { grid-area: bot;  justify-self: center; }
+.deck-card-item .left { grid-area: left; align-self: center; justify-self: end; }
+.deck-card-item .right{ grid-area: right; align-self: center; justify-self: start; }
+.deck-card-item .mid {
+  grid-area: mid; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+}
+.deck-card-item .card-name { font-size: 11px; font-weight: 700; letter-spacing: 0.5px; opacity: 0.9; text-align: center; }
+.deck-card-item .card-skill-tag { font-size: 8px; opacity: 0.65; letter-spacing: 0.3px;
+  border: 1px solid currentColor; border-radius: 3px; padding: 0 4px; line-height: 1.3; }
+
+/* ===== 骑士点数分配弹窗 ===== */
+#knight-assign-overlay { display:flex; opacity:0; pointer-events:none; transition:opacity 0.2s; }
+#knight-assign-overlay.show { opacity:1; pointer-events:auto; }
+
+.ka-chip {
+  width: 44px; height: 44px; border-radius: 10px;
+  background: linear-gradient(135deg, #2a3a5a, #121828);
+  border: 2px solid #4a6aaa; color: #f0d070;
+  font-size: 20px; font-weight: 700; cursor: grab;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s; user-select: none;
+}
+.ka-chip:hover { border-color: #f0d070; background: #1a2a40; transform: scale(1.08); }
+.ka-chip.used { opacity: 0.25; cursor: default; pointer-events: none; }
+.ka-chip.dragging { opacity: 0.5; }
+
+.ka-slot {
+  width: 60px; height: 60px; border-radius: 10px;
+  background: rgba(255,255,255,0.04);
+  border: 2px dashed #3a4a6a;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 2px;
+  transition: all 0.15s; cursor: pointer;
+  position: relative;
+}
+.ka-slot.filled {
+  background: rgba(240,200,70,0.1);
+  border: 2px solid #f0c040;
+}
+.ka-slot.drag-over { border-color: #7eb8fe; background: rgba(126,184,254,0.1); }
+.ka-slot-label { font-size: 10px; color: #8898b8; }
+.ka-slot-val { font-size: 20px; font-weight: 700; color: #f0d070; line-height: 1; }
+.ka-slot-val.empty { color: #3a4a6a; font-size: 14px; }
+
+/* 已选卡组信息栏 */
+.deck-status-bar {
+  position: sticky; top: 0; z-index: 10;
+  background: rgba(10,14,26,0.92);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid #2a3a5a;
+  padding: 10px 20px; width: 100%; max-width: 880px;
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 8px;
+}
+.deck-count { font-size: 14px; color: #d4aa44; font-weight: 600; }
+.deck-count span { color: #7eb8fe; font-size: 22px; }
+.deck-actions { display: flex; gap: 10px; }
+.deck-actions button { padding: 8px 20px; font-size: 13px; }
+
+/* 返回按钮 */
+.back-btn {
+  padding: 8px 24px; border-radius: 8px; border: 1.5px solid #4a5a7a;
+  background: #12182a; color: #8898b8; font-size: 13px; cursor: pointer;
+  transition: all 0.15s; margin: 8px 0;
+}
+.back-btn:hover { border-color: #8898b8; color: #b0c0e0; background: #1a2040; }
+</style>
+</head>
+<body>
+
+<!-- ===== 主菜单 ===== -->
+<div id="main-menu">
+  <div class="menu-title">⚔️ 元素卡牌对决</div>
+  <div class="menu-subtitle">CARD BATTLE</div>
+  <div class="menu-btns">
+    <button class="menu-btn btn-start" onclick="startGame()">⚔ 单机对战</button>
+    <button class="menu-btn btn-start" onclick="showOnlineMenu()" style="border-color:#50b060;background:linear-gradient(135deg,#142818,#08140e);color:#80e090;box-shadow:0 0 24px #1a6a2a33,inset 0 1px 0 rgba(128,224,144,0.15)">🌐 联机对战</button>
+    <button class="menu-btn btn-deck" onclick="openDeckBuilder()">📋 编写卡组</button>
+  </div>
+  <div class="menu-footer">34 张元素卡牌 · 12 大技能 · 无限策略组合</div>
+</div>
+
+<!-- ===== 联机菜单 ===== -->
+<div id="online-menu" class="hidden" style="position:fixed;inset:0;z-index:100;background:#0a0e1a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;">
+  <div class="menu-title" style="font-size:36px">🌐 联机对战</div>
+  <div class="menu-subtitle">P2P 直连 - 无需服务器</div>
+
+  <div style="display:flex;flex-direction:column;gap:14px;align-items:center;margin-top:10px">
+    <button class="menu-btn btn-start" onclick="createOnlineRoom()" style="min-width:280px">🏠 创建房间</button>
+    <div style="display:flex;gap:10px;align-items:center">
+      <input id="join-room-input" type="text" placeholder="输入房间码" maxlength="50" style="padding:12px 16px;border-radius:8px;border:1.5px solid #3a4a6a;background:#121829;color:#e0e6f0;font-size:14px;width:220px;text-align:center;letter-spacing:1px">
+      <button class="menu-btn btn-start" onclick="joinOnlineRoom()" style="min-width:110px;padding:12px 20px;font-size:15px">加入</button>
+    </div>
+    <button class="back-btn" onclick="hideOnlineMenu()" style="margin-top:10px">← 返回主菜单</button>
+  </div>
+
+  <div id="online-status" style="font-size:13px;color:#8898b8;min-height:20px;margin-top:10px"></div>
+</div>
+
+<!-- ===== 等待对手界面 ===== -->
+<div id="waiting-room" class="hidden" style="position:fixed;inset:0;z-index:100;background:#0a0e1a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;">
+  <div class="menu-title" style="font-size:32px">等待对手...</div>
+  <div style="font-size:14px;color:#6888aa;max-width:320px;text-align:center">① 将下方房间码复制发给好友<br>② 好友粘贴房间码后会生成回应码<br>③ 收到好友发来的回应码后，点击下方按钮粘贴即可</div>
+  <div style="display:flex;flex-direction:column;gap:6px;align-items:center">
+    <div style="font-size:12px;color:#7eb8fe">房间码（点击下方按钮复制）：</div>
+    <div id="waiting-room-id" class="selectable" style="font-weight:700;color:#f0c040;font-size:12px;background:#121829;padding:12px 16px;border-radius:8px;border:1.5px solid #3a4a6a;max-width:320px;word-break:break-all;font-family:monospace;max-height:100px;overflow-y:auto"></div>
+    <button class="menu-btn btn-start" onclick="copyRoomCode()" style="min-width:160px;padding:8px 16px;font-size:14px;margin-top:4px">📋 复制房间码</button>
+  </div>
+  <div class="loading-dots" style="display:flex;gap:6px;margin-top:10px">
+    <span style="width:10px;height:10px;border-radius:50%;background:#7eb8fe;animation:dotPulse 1.4s infinite both"></span>
+    <span style="width:10px;height:10px;border-radius:50%;background:#7eb8fe;animation:dotPulse 1.4s infinite both 0.2s"></span>
+    <span style="width:10px;height:10px;border-radius:50%;background:#7eb8fe;animation:dotPulse 1.4s infinite both 0.4s"></span>
+  </div>
+
+  <!-- 房主输入对方回应码 -->
+  <div id="host-answer-section" style="display:none;flex-direction:column;gap:8px;align-items:center;margin-top:16px">
+    <div style="font-size:12px;color:#7eb8fe">对方已回应，粘贴对方发来的代码：</div>
+    <textarea id="host-answer-input" placeholder="粘贴对方的回应代码..." style="padding:10px 14px;border-radius:8px;border:1.5px solid #3a4a6a;background:#121829;color:#e0e6f0;font-size:12px;width:280px;height:80px;resize:none;font-family:monospace"></textarea>
+    <button class="menu-btn btn-start" onclick="submitHostAnswer()" style="min-width:180px;padding:10px 20px;font-size:14px">确认连接</button>
+  </div>
+
+  <!-- 显示输入回应码的按钮 -->
+  <button id="show-host-answer-btn" class="menu-btn" onclick="showHostAnswerSection()" style="margin-top:16px;min-width:180px;padding:8px 16px;font-size:13px;background:#1a2030;border-color:#5a4a2a;color:#d4aa44">📥 已收到回应码？点击此处粘贴</button>
+
+  <button class="back-btn" onclick="cancelOnline()" style="margin-top:20px">✕ 取消</button>
+</div>
+
+<!-- ===== 输入房间码界面（加入方） ===== -->
+<div id="join-room-view" class="hidden" style="position:fixed;inset:0;z-index:100;background:#0a0e1a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;">
+  <div class="menu-title" style="font-size:32px">粘贴房间码</div>
+  <div style="font-size:14px;color:#6888aa;max-width:320px;text-align:center">将房主发来的房间码粘贴到下方</div>
+  <textarea id="join-sdp-input" placeholder="在此粘贴房间码..." style="padding:12px 16px;border-radius:8px;border:1.5px solid #3a4a6a;background:#121829;color:#e0e6f0;font-size:13px;width:320px;height:120px;resize:none;font-family:monospace"></textarea>
+  <button class="menu-btn btn-start" onclick="submitJoinCode()" style="min-width:200px">确认加入</button>
+  <div id="join-status" style="font-size:13px;color:#8898b8;min-height:20px"></div>
+  <button class="back-btn" onclick="cancelJoin()" style="margin-top:10px">← 返回</button>
+</div>
+<style>
+@keyframes dotPulse {
+  0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+  40% { transform: scale(1); opacity: 1; }
+}
+
+/* 法术牌消失动画 */
+@keyframes spellFlash {
+  0%   { background: rgba(255,220,60,0.9); transform: scale(1.1); }
+  40%  { background: rgba(255,240,120,0.6); transform: scale(1.25); }
+  100% { background: rgba(255,255,200,0); transform: scale(0.5); opacity: 0; }
+}
+.board-cell.spell-flash {
+  animation: spellFlash 0.5s ease-out forwards;
+}
+
+/* 积分+2旋转动画 */
+@keyframes coinSpin {
+  0% { transform: rotateY(0deg) scale(1); }
+  50% { transform: rotateY(720deg) scale(1.2); }
+  100% { transform: rotateY(1440deg) scale(1); }
+}
+#p-score.coin-spin, #ai-score.coin-spin {
+  animation: coinSpin 0.8s ease-in-out;
+}
+</style>
+
+<!-- ===== 游戏视图 ===== -->
+<div id="game-view" class="hidden">
+
+<h1>⚔️ 元素卡牌对决</h1>
+<div id="info">第 <span class="hl" id="round-num">1</span> / <span id="max-round">12</span> 回合 — <span class="hl" id="turn-text">你的回合</span><span id="online-tag" style="display:none;color:#50b060;font-size:12px;margin-left:8px">🌐 联机</span></div>
+<div id="mana-bar"><span class="mana-label">💎费用</span><div id="mana-gems"></div><span id="mana-text">1/1</span></div>
+<div id="battle-log"></div>
+
+<div id="game-area">
+  <!-- 敌方手牌（上方，背面朝下） -->
+  <div id="enemy-hand-area">
+    <div id="enemy-hand-label">— 敌方手牌 —</div>
+    <div id="enemy-hand"></div>
+  </div>
+  <!-- 棋盘 -->
+  <div id="board"></div>
+  <!-- 我方手牌（下方） -->
+  <div id="hand-area">
+    <div id="hand-label">— 我的手牌 —</div>
+    <div id="hand"></div>
+  </div>
+</div>
+
+<div id="score-area">
+  <div class="sc"><div class="num" style="color:#7eb8fe" id="p-score">0</div><span id="p-label">玩家</span></div>
+  <div class="sc"><div class="num" style="color:#fe7e9e" id="ai-score">0</div><span id="o-label">AI</span></div>
+</div>
+
+<div id="btn-area">
+  <button id="skip-btn" onclick="skipTurn()">⏭ 跳过回合</button>
+  <button onclick="resetGame()">重新开始</button>
+  <button id="menu-btn" onclick="backToMenu()" style="display:none">🏠 返回主界面</button>
+</div>
+
+<div id="rules">
+  规则：十二宫格（<span class="hl-y">4×3</span>）轮流放牌，每张牌有<span class="hl-wt">上/下/左/右</span>四面固定数值。<br>
+  放牌时刚放下的牌作为<span class="hl-y">进攻方</span>，与相邻敌方对比 — 你的朝向数值 vs 敌方朝向数值。<br>
+  每张牌拥有<span class="hl-w">🔥火</span><span class="hl-wt">💧水</span><span class="hl-g">🌿地</span><span class="hl-p">⚡雷</span>元素属性和独特<span class="hl-y">技能</span>，可在战斗中触发加成或特效。<br>
+  <span class="hl-y">💎 费用机制：</span>每张卡牌左上角标有费用（<span class="hl-y">2~7</span>），第 N 回合拥有 N 点费用（最高 16 点）。<br>
+  出牌需消耗对应费用，<span class="hl-w">未用完的费用不保留到下回合</span>。<span class="hl-y">⏱ 最多 16 回合</span>，回合结束后占格多者获胜。<br>
+  <span class="hl-y">🔄 翻面可翻回：</span>被敌方翻面的卡牌（暗色）并非永久失效，相邻己方高攻卡牌可将其<span class="hl-w">夺回</span>（改变归属）。<br>
+  <span class="hl-y">👑 国王：</span>人类阵营光环牌，无攻击但防御极高（8/8/8/8）。未翻面时所有我方人类四个方向+1，放置时可选择一名友方单位再次比较。<br>
+  <span class="hl-y">🗡️ 盗贼：</span>人类阵营，上4左3右2下2，费用3。<span class="hl-w">本质小偷</span>：若未翻面时敌方跳过回合，敌方下回合费用-2，我方下回合费用+2。<br>
+  <span class="hl-y">❄️ 霜剑骑士：</span>水属性骑士，费用2。<span class="hl-wt">霜冻</span>：翻转敌方后降低其一个方向数值-1。<br>
+  <span class="hl-y">🔥 烈焰法师：</span>火属性法师，费用3，高攻低防。<span class="hl-w">灼烧</span>：翻转目标后施加灼烧，持续2回合各降低其最高方向数值1点。<br>
+  <span class="hl-y">🌿 林地精灵：</span>木属性野兽，费用1，低数值但持续产出。<span class="hl-g">治愈</span>：每回合开始，己方积分+1（持续光环）。<br>
+  <span class="hl-y">⚡ 雷鸣使者：</span>雷属性骑士，费用2。<span class="hl-p">先手</span>：攻击值+2，先于相邻敌牌比较。<br>
+  <span class="hl-y">🛡️ 圣盾卫士：</span>水属性骑士，费用3，超高防御。<span class="hl-wt">护卫</span>：出场时为相邻友方卡牌提供护盾，可抵挡一次翻转。<br>
+  <span class="hl-y">🐉 炎龙破军：</span>火属性龙族，费用4，最强攻击力。<span class="hl-w">龙息</span>：攻击时无视敌方防御值的50%，穿透伤害。<br>
+  <span class="hl-y">🏰 铁壁战车：</span>土属性机械，费用2，高防减伤。<span class="hl-g">坚壁</span>：防御值≥6时受攻击伤害额外-1。<br>
+  <span class="hl-y">🪙 幸运硬币：</span>中立道具，费用1，无战斗力。<span class="hl-y">赌运</span>：出牌时随机触发：50%概率己方积分+2，50%概率从牌堆抽1张牌。
+</div>
+
+<!-- 全局 tooltip -->
+<div class="tooltip-box" id="tooltip">
+  <div class="tt-name"></div>
+  <div class="tt-skill"></div>
+  <div class="tt-desc"></div>
+  <div class="tt-stats"></div>
+</div>
+
+<!-- 关闭 game-view -->
+</div><!-- end #game-view -->
+
+<!-- ===== 卡组编辑器 ===== -->
+<div id="deck-view" class="hidden">
+  <div class="deck-status-bar">
+    <div class="deck-count">已选卡牌：<span id="deck-selected-count">0</span> / 12</div>
+    <div class="deck-actions">
+      <button onclick="clearDeckSelection()">清空选择</button>
+      <button onclick="saveDeckAndBack()">确认卡组</button>
+    </div>
+  </div>
+  <button class="back-btn" onclick="backToMenu()">← 返回主菜单</button>
+
+  <!-- 种族筛选栏 -->
+  <div class="race-filter-bar" id="race-filter-bar">
+    <button class="race-filter-btn active" data-race="all" onclick="filterDeckByRace('all')">全部</button>
+    <button class="race-filter-btn" data-race="人类" onclick="filterDeckByRace('人类')">人类</button>
+    <button class="race-filter-btn" data-race="野兽" onclick="filterDeckByRace('野兽')">野兽</button>
+    <button class="race-filter-btn" data-race="元素" onclick="filterDeckByRace('元素')">元素</button>
+    <button class="race-filter-btn" data-race="龙族" onclick="filterDeckByRace('龙族')">龙族</button>
+    <button class="race-filter-btn" data-race="亡灵" onclick="filterDeckByRace('亡灵')">亡灵</button>
+    <button class="race-filter-btn" data-race="植物" onclick="filterDeckByRace('植物')">植物</button>
+    <button class="race-filter-btn" data-race="机械" onclick="filterDeckByRace('机械')">机械</button>
+    <button class="race-filter-btn" data-race="幻灵" onclick="filterDeckByRace('幻灵')">幻灵</button>
+    <button class="race-filter-btn" data-race="道具" onclick="filterDeckByRace('道具')">道具</button>
+  </div>
+
+  <div class="deck-grid" id="deck-grid"></div>
+</div>
+<!-- 卡牌详情弹窗（右键查看）—— 放在 script 之前，确保 DOM 解析时已存在 -->
+<div class="card-detail-overlay" id="card-detail">
+  <div class="card-detail-box" id="card-detail-box">
+    <button class="card-detail-close" onclick="hideCardDetail()">✕</button>
+    <div class="cd-header">
+      <div class="cd-name" id="cd-name"></div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <div class="cd-owner-badge" id="cd-owner"></div>
+        <div class="cd-cost-badge" id="cd-cost"></div>
+      </div>
+    </div>
+    <div class="cd-stats-grid">
+      <div class="cd-stat"><div class="cd-stat-val" id="cd-t">-</div><div class="cd-stat-dir">↑ 上</div></div>
+      <div class="cd-stat"><div class="cd-stat-val" id="cd-b">-</div><div class="cd-stat-dir">↓ 下</div></div>
+      <div class="cd-stat"><div class="cd-stat-val" id="cd-l">-</div><div class="cd-stat-dir">← 左</div></div>
+      <div class="cd-stat"><div class="cd-stat-val" id="cd-r">-</div><div class="cd-stat-dir">→ 右</div></div>
+    </div>
+    <div class="cd-bar-chart" id="cd-bars"></div>
+    <div class="cd-skill-section">
+      <div class="cd-skill-label">— 技能 —</div>
+      <div class="cd-skill-name" id="cd-skname"></div>
+      <div class="cd-skill-desc" id="cd-skdesc"></div>
+    </div>
+    <!-- Buff 效果显示 -->
+    <div class="cd-buff-section" id="cd-buff-section" style="display:none">
+      <div class="cd-skill-label">— 增益效果 —</div>
+      <div class="cd-buffs" id="cd-buffs"></div>
+    </div>
+    <!-- 卡牌旋转预览 -->
+    <div class="cd-rotate-section">
+      <div class="cd-rotate-label">— 旋转预览 —</div>
+      <div class="cd-rotate-wrap">
+        <button class="cd-rot-btn" id="cd-rot-left" onclick="cdRotate(-1)" title="向左旋转90°">&#8592;</button>
+        <div class="cd-rotate-preview-container">
+          <div class="rot-card-preview" id="cd-preview-card"></div>
+        </div>
+        <button class="cd-rot-btn" id="cd-rot-right" onclick="cdRotate(1)" title="向右旋转90°">&#8594;</button>
+      </div>
+      <div class="cd-rotate-hint" id="cd-rotate-hint">旋转 0°</div>
+    </div>
+  </div>
+</div>
+
+<!-- 旋转方向选择弹窗 -->
+<div id="rotation-overlay">
+  <div id="rotation-box">
+    <div class="rot-title">🔄 选择放置方向</div>
+    <div class="rot-hint">点击箭头旋转卡牌，确认后放置</div>
+    <div class="rot-single-preview" id="rot-single-preview">
+      <button class="cd-rot-btn" onclick="rotStep(-1)" title="向左旋转90°">&#8592;</button>
+      <div class="cd-rotate-preview-container">
+        <div class="rot-card-preview" id="rot-preview-card"></div>
+      </div>
+      <button class="cd-rot-btn" onclick="rotStep(1)" title="向右旋转90°">&#8594;</button>
+    </div>
+    <div class="cd-rotate-hint" id="rot-hint-text">旋转 0°</div>
+    <div class="rot-confirm-row">
+      <button id="rot-confirm-btn" onclick="rotConfirm()">✅ 确认放置</button>
+      <button onclick="rotCancel()" style="background:#1a1810;border-color:#6a5a3a;color:#d4aa44">✕ 取消</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- 道具牌使用确认弹窗 -->
+<div id="spell-overlay">
+  <div id="spell-box">
+    <div class="spell-title">✨ 使用道具牌</div>
+    <div id="spell-card-icon-preview" style="font-size:52px;text-align:center;margin:6px 0 4px;line-height:1.2;filter:drop-shadow(0 0 12px #f0c04088)"></div>
+    <div class="spell-name" id="spell-card-name"></div>
+    <div class="spell-desc" id="spell-card-desc"></div>
+    <div class="spell-cost-row">
+      <span class="cost-label">消耗费用：</span>
+      <span class="cost-value" id="spell-cost-val"></span>
+      <span class="cost-label">点</span>
+    </div>
+    <div class="rot-confirm-row">
+      <button onclick="spellConfirm()" style="background:#2a2010;border-color:#f0c040;color:#f0c040">✅ 使用</button>
+      <button onclick="spellCancel()" style="background:#1a1810;border-color:#6a5a3a;color:#d4aa44">✕ 取消</button>
+    </div>
+  </div>
+</div>
+<!-- 白兔"逃跑"选择弹窗 -->
+<div class="card-detail-overlay" id="rabbit-escape-overlay">
+  <div class="card-detail-box" id="rabbit-escape-box" style="max-width:400px">
+    <div class="cd-header" style="margin-bottom:10px">
+      <div class="cd-name">🐰 白兔 · 逃跑</div>
+      <div style="color:#aaa;font-size:12px">选择逃跑目的地（十字方向空格）</div>
+    </div>
+    <div id="rabbit-escape-hint" style="text-align:center;color:#a0e080;font-size:13px;margin-bottom:12px">白兔拒绝被翻面！选择逃跑方向</div>
+    <div id="rabbit-escape-board" style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:14px">
+      <!-- 由 JS 动态生成棋盘缩略图 -->
+    </div>
+  </div>
+</div>
+
+<!-- 国王"再次比较"选择弹窗 --><div class="card-detail-overlay" id="king-duel-overlay">
+  <div class="card-detail-box" id="king-duel-box" style="max-width:400px">
+    <div class="cd-header" style="margin-bottom:10px">
+      <div class="cd-name">👑 国王 · 再次比较</div>
+      <div style="color:#aaa;font-size:12px">选择棋盘上的一张卡牌进行额外战斗判定</div>
+    </div>
+    <div id="king-duel-hint" style="text-align:center;color:#d4aa44;font-size:13px;margin-bottom:12px">选择一名友方单位再次进行比较</div>
+    <div id="king-duel-board" style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:14px">
+      <!-- 由 JS 动态生成棋盘缩略图 -->
+    </div>
+    <div style="display:flex;gap:10px;justify-content:center">
+      <button onclick="kingDuelCancel()" style="background:#1a1810;border-color:#6a5a3a;color:#d4aa44">✕ 跳过</button>
+    </div>
+  </div>
+</div>
+
+<!-- 骑士点数分配弹窗 -->
+<div class="card-detail-overlay" id="knight-assign-overlay">
+  <div class="card-detail-box" id="knight-assign-box" style="max-width:340px">
+    <div class="cd-header" style="margin-bottom:10px">
+      <div class="cd-name">⚔️ 骑士 · 自由分配</div>
+      <div style="color:#aaa;font-size:12px">将 4、4、5、6 拖到对应方向槽</div>
+    </div>
+
+    <!-- 可用点数 -->
+    <div id="ka-chips" style="display:flex;justify-content:center;gap:10px;margin:10px 0 14px">
+      <!-- 由 JS 动态生成 -->
+    </div>
+
+    <!-- 方向布局 3×3 grid -->
+    <div style="display:grid;grid-template-columns:1fr 60px 1fr;grid-template-rows:60px 60px 60px;gap:6px;align-items:center;justify-items:center;margin-bottom:14px">
+      <div></div>
+      <div class="ka-slot" id="ka-slot-t" data-dir="t" ondragover="kaDragOver(event)" ondrop="kaDrop(event,'t')">
+        <span class="ka-slot-label">↑ 上</span>
+        <span class="ka-slot-val" id="ka-val-t">?</span>
+      </div>
+      <div></div>
+
+      <div class="ka-slot" id="ka-slot-l" data-dir="l" ondragover="kaDragOver(event)" ondrop="kaDrop(event,'l')">
+        <span class="ka-slot-label">← 左</span>
+        <span class="ka-slot-val" id="ka-val-l">?</span>
+      </div>
+      <div style="width:60px;height:60px;background:rgba(255,255,255,0.04);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:22px">⚔️</div>
+      <div class="ka-slot" id="ka-slot-r" data-dir="r" ondragover="kaDragOver(event)" ondrop="kaDrop(event,'r')">
+        <span class="ka-slot-label">→ 右</span>
+        <span class="ka-slot-val" id="ka-val-r">?</span>
+      </div>
+
+      <div></div>
+      <div class="ka-slot" id="ka-slot-b" data-dir="b" ondragover="kaDragOver(event)" ondrop="kaDrop(event,'b')">
+        <span class="ka-slot-label">↓ 下</span>
+        <span class="ka-slot-val" id="ka-val-b">?</span>
+      </div>
+      <div></div>
+    </div>
+
+    <div style="display:flex;gap:10px;justify-content:center">
+      <button id="ka-confirm-btn" onclick="kaConfirm()" disabled style="opacity:0.4">✅ 确认放置</button>
+      <button onclick="kaCancel()" style="background:#1a1810;border-color:#6a5a3a;color:#d4aa44">✕ 取消</button>
+    </div>
+    <div id="ka-hint" style="text-align:center;color:#888;font-size:11px;margin-top:8px">拖动上方点数到对应方向，也可点击槽位轮换</div>
+  </div>
+</div>
+
+<script>
+// ========== 技能定义 ==========
+// type: 'passive'(数值修正) | 'active'(翻转后特效)
+const SKILLS = {
+  // === 被动技能 ===
+  flame_strike: {
+    type: 'passive', name: '烈焰冲击', icon: '🔥',
+    desc: '攻击方向数值 +2',
+    calcAtk: (val, dir) => val + 2
+  },
+  iron_wall: {
+    type: 'passive', name: '铁壁', icon: '🛡️',
+    desc: '被攻击时防御 +2',
+    calcDef: (val) => val + 2
+  },
+  balanced: {
+    type: 'passive', name: '均衡之力', icon: '⚖️',
+    desc: '所有方向数值 +1',
+    calcGlobal: (val) => Math.min(val + 1, 9)
+  },
+  rigid_body: {
+    type: 'passive', name: '刚体', icon: '💎',
+    desc: '平局视为胜利',
+    tieWins: true
+  },
+
+  // === 主动技能 ===
+  chain_lightning: {
+    type: 'active', name: '连锁闪电', icon: '⚡',
+    desc: '翻转敌人后50%概率连锁翻转相邻另一敌牌'
+  },
+  freeze: {
+    type: 'active', name: '冰封', icon: '❄️',
+    desc: '被翻转的敌方牌永久锁定（不可被翻回）'
+  },
+  absorb: {
+    type: 'active', name: '吸收', icon: '🌀',
+    desc: '每次成功翻转后，自身全方向+1'
+  },
+  resonance: {
+    type: 'active', name: '共振', icon: '🔗',
+    desc: '放置时己方所有相邻牌各方向+1'
+  },
+  eruption: {
+    type: 'active', name: '烈焰爆发', icon: '💥',
+    desc: '翻转敌人后，周围1格未翻转敌人有50%概率被波及翻转（自身平均数值>4时触发）'
+  },
+  knight_assign: {
+    type: 'active', name: '自由分配', icon: '🎲',
+    desc: '放置前可将 4、4、5、6 四个点数自由分配到上/下/左/右四个方向'
+  },
+
+  // === 持续光环技能 ===
+  king_aura: {
+    type: 'aura', name: '王之威仪', icon: '👑',
+    desc: '持续：场上未翻面时，所有我方人类阵营卡牌四个方向点数+1；放置时可选择一名友方单位，使其与相邻敌方再次进行战斗判定'
+  },
+
+  // === 特殊被动技能 ===
+  rabbit_escape: {
+    type: 'passive', name: '逃跑', icon: '🐰',
+    desc: '被攻击翻面时不会立刻翻面，而是沿十字方向逃跑（由玩家选择方向）；仅当四周无路可逃时才被翻面'
+  },
+
+  // === 回合/费用类技能 ===
+  thief_steal: {
+    type: 'passive', name: '本质小偷', icon: '🗡️',
+    desc: '若敌方跳过回合，则敌方下个回合获得的费用-2，我方下个回合获得的费用+2'
+  },
+
+  // ===== 霜火骑士团新增技能 =====
+  frost_slow: {
+    type: 'active', name: '霜冻', icon: '❄️',
+    desc: '命中翻转敌方卡牌后，该牌本回合速度-2（下一次攻击力-1）'
+  },
+  burning_dot: {
+    type: 'active', name: '灼烧', icon: '🔥',
+    desc: '出牌后对翻转目标施加灼烧，持续2回合每回合造成1点额外伤害（将其数值-1）'
+  },
+  heal_regen: {
+    type: 'aura', name: '治愈', icon: '🌿',
+    desc: '持续：每回合开始时，若此牌在场且未被翻面，己方积分+1'
+  },
+  first_strike: {
+    type: 'passive', name: '先手', icon: '⚡',
+    desc: '放置时速度+3，本回合此牌必定先于相邻敌牌进行比较（攻击值+2优先判断）',
+    calcAtk: (val, dir) => val + 2
+  },
+  guardian_shield: {
+    type: 'active', name: '护卫', icon: '🛡️',
+    desc: '出场时为己方所有相邻卡牌护盾一次，下次被翻面时不改变归属'
+  },
+  dragon_breath: {
+    type: 'passive', name: '龙息', icon: '🐉',
+    desc: '攻击时无视敌方防御值的50%（敌方防御值折半计算），穿透伤害',
+    calcDef: (val) => Math.ceil(val / 2)
+  },
+  iron_fortress: {
+    type: 'passive', name: '坚壁', icon: '🏰',
+    desc: '当自身防御值≥6时，受到的攻击伤害额外-1（等效防御+1）',
+    calcDef: (val, self) => (self && (self.td || self.t) >= 6) ? val + 1 : val
+  },
+  lucky_coin: {
+    type: 'active', name: '赌运', icon: '🪙',
+    desc: '出牌时随机触发：50%概率己方积分+2，50%概率从牌堆顶抽1张牌'
+  }
+};
+
+// ========== 固定卡牌池（33张）==========
+// cost: 费用 (1~8)，与数值强度和技能威力正相关
+// 攻防分离字段：ta/ba/la/ra = 攻击值，td/bd/ld/rd = 防御值
+// 若省略则默认 atk == def == t/b/l/r（原始圆形显示）
+// 攻击值（三角形）vs 防御值（正方形）：atk > def 可翻转对方
+const CARD_DECK = [
+  // ===== ⚔️ 特殊牌 =====
+  { name:'骑士',       race:'人类', t:4,b:4,l:5,r:6, skill:'knight_assign',  cost:4 },
+  { name:'国王',       race:'人类', t:1,b:1,l:1,r:1, ta:1,ba:1,la:1,ra:1, td:8,bd:8,ld:8,rd:8, skill:'king_aura',  cost:4 },
+  { name:'白兔',       race:'野兽', t:1,b:1,l:1,r:1, skill:'rabbit_escape', cost:1 },
+  // 盗贼：人类阵营，上4左3右2下2，本质小偷技能
+  { name:'盗贼',       race:'人类', t:4,b:2,l:3,r:2, skill:'thief_steal',   cost:3 },
+
+  // ===== 🏰 霜火骑士团（8张）=====
+  { name:'霜剑骑士', race:'人类', t:3,b:2,l:2,r:3, ta:3,ba:2,la:2,ra:3, td:2,bd:2,ld:2,rd:2, skill:'frost_slow', cost:2 },
+  // 烈焰法师：法师·火属性，费用3，高攻低防，灼烧持续伤害
+  { name:'烈焰法师', race:'人类', t:7,b:5,l:4,r:6, ta:7,ba:5,la:4,ra:6, td:2,bd:2,ld:2,rd:2, skill:'burning_dot', cost:3 },
+  { name:'林地精灵', race:'野兽', t:1,b:1,l:1,r:1, ta:1,ba:1,la:1,ra:1, td:1,bd:1,ld:1,rd:1, skill:'heal_regen', cost:1 },
+  { name:'雷鸣使者', race:'人类', t:2,b:2,l:2,r:2, ta:2,ba:2,la:2,ra:2, td:2,bd:2,ld:2,rd:2, skill:'first_strike', cost:2 },
+  { name:'圣盾卫士', race:'人类', t:2,b:2,l:1,r:2, ta:2,ba:2,la:1,ra:2, td:4,bd:4,ld:4,rd:4, skill:'guardian_shield', cost:3 },
+  // 炎龙破军：龙族·火属性，费用4，最强攻击，穿透防御
+  { name:'炎龙破军', race:'龙族', t:7,b:5,l:6,r:7, ta:7,ba:5,la:6,ra:7, td:3,bd:3,ld:3,rd:3, skill:'dragon_breath', cost:4 },
+  { name:'铁壁战车', race:'机械', t:1,b:1,l:1,r:1, ta:1,ba:1,la:1,ra:1, td:4,bd:4,ld:4,rd:4, skill:'iron_fortress', cost:2 },
+  // 幸运硬币：道具·中立，费用1，无战斗力，随机增益
+  { name:'幸运硬币', race:'道具', t:1,b:1,l:1,r:1, ta:1,ba:1,la:1,ra:1, td:1,bd:1,ld:1,rd:1, skill:'lucky_coin', cost:1 },
+];
+
+// ========== 游戏状态 ==========
+const COLS = 4, ROWS = 3, TOTAL = COLS * ROWS;
+const MAX_ROUNDS = 16; // 最大回合数
+let board = Array(TOTAL).fill(null);
+// board 数据结构: null | { owner, deckIdx, t, b, l, r, flipped, locked, boosted, name, skill }
+let hand = [];          // 玩家手牌（引用 CARD_DECK 的副本）
+let selectedCard = null;
+let round = 1;
+let playerScore = 0, aiScore = 0;
+let gameOver = false;
+let isPlayerTurn = true;
+let currentMana = 1;    // 当前回合可用费用
+let maxMana = 1;        // 本回合最大费用 (= 回合数)
+
+let playerDeck = [];    // 玩家牌堆（deckIdx 数组，未抽的牌）
+let aiDeck = [];        // AI牌堆（deckIdx 数组，未抽的牌）
+const MAX_HAND_SIZE = 8; // 手牌上限
+let deckSelectedIndices = new Set(); // 联机模式选中的卡牌索引
+
+// ========== 联机模式状态 ==========
+let isOnlineMode = false;
+let myPlayerIndex = 0; // 0 = 玩家1, 1 = 玩家2
+let roomId = null;
+let opponentHandCount = 0;
+let opponentDeckCount = 0;
+
+// ========== WebRTC P2P 联机逻辑 ==========
+let pc = null; // RTCPeerConnection
+let dataChannel = null; // RTCDataChannel
+let pendingCandidates = []; // 暂存的ICE候选
+
+// STUN服务器配置（使用Google免费STUN）
+const ICE_SERVERS = {
+  iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun2.l.google.com:19302' }
+  ]
+};
+
+// 创建PeerConnection
+function createPeerConnection() {
+  pc = new RTCPeerConnection(ICE_SERVERS);
+
+  pc.onicecandidate = (event) => {
+    if (event.candidate) {
+      // ICE候选会在生成SDP时自动包含，不需要单独处理
+    }
+  };
+
+  pc.onconnectionstatechange = () => {
+    console.log('Connection state:', pc.connectionState);
+    if (pc.connectionState === 'connected') {
+      document.getElementById('online-status').textContent = '✅ 已连接！';
+    } else if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
+      if (isOnlineMode && !gameOver) {
+        setBattleLog('⚠️ 连接已断开');
+      }
+    }
+  };
+
+  pc.ondatachannel = (event) => {
+    dataChannel = event.channel;
+    setupDataChannel(dataChannel);
+  };
+
+  return pc;
+}
+
+// 配置DataChannel
+function setupDataChannel(dc) {
+  dc.onopen = () => {
+    console.log('DataChannel opened, myPlayerIndex:', myPlayerIndex, 'connectionState:', pc.connectionState);
+    // 连接建立，开始游戏
+    if (myPlayerIndex === 0) {
+      // 房主先手
+      console.log('Host starting game...');
+      isOnlineMode = true;
+      showView('game');
+      startOnlineGame(true, 0);
+      console.log('Host game started');
+    } else if (myPlayerIndex === 1) {
+      // 加入方后手
+      console.log('Joiner starting game...');
+      isOnlineMode = true;
+      showView('game');
+      startOnlineGame(false, 1);
+      console.log('Joiner game started');
+    }
+  };
+
+  dc.onmessage = (event) => {
+    console.log('DataChannel message received:', event.data);
+    const msg = JSON.parse(event.data);
+    handleP2PMessage(msg);
+  };
+
+  dc.onclose = () => {
+    console.log('DataChannel closed');
+    if (isOnlineMode && !gameOver) {
+      setBattleLog('⚠️ 对手已断开');
+    }
+  };
+
+  dc.onerror = (e) => {
+    console.error('DataChannel error:', e);
+  };
+}
+
+// 处理P2P消息
+function handleP2PMessage(msg) {
+  switch (msg.type) {
+    case 'opponent_placed':
+      handleOpponentPlaced(msg);
+      break;
+
+    case 'opponent_skipped':
+      handleOpponentSkipped(msg);
+      break;
+
+    case 'opponent_left':
+      if (!gameOver) {
+        setBattleLog('⚠️ 对手已离开游戏');
+        gameOver = true;
+        alert('对手已离开游戏');
+      }
+      break;
+  }
+}
+
+// 发送P2P消息
+function sendP2P(msg) {
+  if (dataChannel && dataChannel.readyState === 'open') {
+    dataChannel.send(JSON.stringify(msg));
+  }
+}
+
+// ========== UI 函数 ==========
+function showOnlineMenu() {
+  showView('online');
+  document.getElementById('online-status').textContent = '';
+}
+
+function hideOnlineMenu() {
+  showView('menu');
+}
+
+// 创建房间（房主）
+async function createOnlineRoom() {
+  try {
+    document.getElementById('online-status').textContent = '正在创建房间...';
+    myPlayerIndex = 0;
+
+    createPeerConnection();
+
+    // 创建DataChannel
+    dataChannel = pc.createDataChannel('game', { ordered: true });
+    setupDataChannel(dataChannel);
+
+    // 创建Offer
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+
+    // 等待ICE收集完成
+    await waitForIceComplete();
+
+    // 生成房间码（包含完整的SDP Offer）
+    const roomCode = btoa(JSON.stringify(pc.localDescription));
+    roomId = roomCode.substring(0, 8); // 取前8位作为显示ID
+
+    document.getElementById('waiting-room-id').textContent = roomCode;
+    document.getElementById('online-status').textContent = '房间已创建，等待对手加入...';
+    showView('waiting');
+
+  } catch (e) {
+    console.error(e);
+    document.getElementById('online-status').textContent = '❌ 创建房间失败: ' + e.message;
+  }
+}
+
+// 等待ICE收集完成
+function waitForIceComplete() {
+  return new Promise((resolve) => {
+    if (pc.iceGatheringState === 'complete') {
+      resolve();
+      return;
+    }
+    const check = setInterval(() => {
+      if (pc.iceGatheringState === 'complete') {
+        clearInterval(check);
+        resolve();
+      }
+    }, 200);
+    // 最多等5秒
+    setTimeout(() => {
+      clearInterval(check);
+      resolve();
+    }, 5000);
+  });
+}
+
+// 复制房间码
+function copyRoomCode() {
+  const codeEl = document.getElementById('waiting-room-id');
+  const code = codeEl.textContent || codeEl.innerText;
+  if (!code) {
+    alert('房间码为空，请重新创建房间');
+    return;
+  }
+
+  // 尝试多种复制方式
+  let copied = false;
+
+  // 方式1: navigator.clipboard (现代浏览器)
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(code).then(() => {
+      copied = true;
+      alert('✅ 房间码已复制！发给好友吧');
+    }).catch(() => {
+      // 失败则尝试其他方式
+      tryFallbackCopy(code);
+    });
+    return;
+  }
+
+  // 方式2: 降级方案
+  tryFallbackCopy(code);
+}
+
+function tryFallbackCopy(text) {
+  let copied = false;
+
+  // 创建临时textarea
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  // 修复：确保 textarea 可以被选中（覆盖 body 的 user-select:none）
+  textarea.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0;user-select:text;-webkit-user-select:text';
+  document.body.appendChild(textarea);
+
+  // 选择并复制
+  textarea.focus();
+  textarea.select();
+
+  try {
+    copied = document.execCommand('copy');
+  } catch (e) {
+    copied = false;
+  }
+
+  document.body.removeChild(textarea);
+
+  if (copied) {
+    alert('✅ 房间码已复制！发给好友吧');
+  } else {
+    // 最终降级：手动选择
+    alert('自动复制失败，请手动选择房间码并复制（Ctrl+C）');
+    const codeEl = document.getElementById('waiting-room-id');
+    if (codeEl) {
+      codeEl.style.userSelect = 'text';
+      codeEl.style.webkitUserSelect = 'text';
+      const range = document.createRange();
+      range.selectNodeContents(codeEl);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+      setTimeout(() => { sel.removeAllRanges(); }, 3000);
+    }
+  }
+}
+
+// 加入房间流程
+function joinOnlineRoom() {
+  const input = document.getElementById('join-room-input');
+  const code = input.value.trim();
+  if (!code || code.length < 50) {
+    document.getElementById('online-status').textContent = '❌ 请输入有效的房间码';
+    return;
+  }
+  // 显示输入SDP界面
+  document.getElementById('join-sdp-input').value = code;
+  showView('join-room');
+}
+
+// 提交加入请求
+async function submitJoinCode() {
+  try {
+    const code = document.getElementById('join-sdp-input').value.trim();
+    if (!code) {
+      document.getElementById('join-status').textContent = '❌ 请输入房间码';
+      return;
+    }
+
+    document.getElementById('join-status').textContent = '正在连接...';
+    myPlayerIndex = 1;
+
+    // 解析Offer
+    const offerDesc = JSON.parse(atob(code));
+
+    createPeerConnection();
+
+    await pc.setRemoteDescription(offerDesc);
+
+    // 创建Answer
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+
+    // 等待ICE收集
+    await waitForIceComplete();
+
+    // 生成Answer码（需要发回给房主）
+    const answerCode = btoa(JSON.stringify(pc.localDescription));
+
+    // 显示Answer码，让用户复制发给房主
+    document.getElementById('join-status').innerHTML =
+      '<span style="color:#50b060">连接信息已生成！</span><br>' +
+      '<span style="font-size:11px;color:#6888aa">请将下方代码复制发给房主，房主粘贴后即可连接：</span>';
+
+    // 创建代码显示区域
+    const statusEl = document.getElementById('join-status');
+
+    const answerDiv = document.createElement('div');
+    answerDiv.id = 'join-answer-code';
+    answerDiv.className = 'selectable';
+    answerDiv.style.cssText = 'background:#121829;padding:10px;border-radius:6px;border:1.5px solid #3a4a6a;margin-top:8px;font-family:monospace;font-size:11px;word-break:break-all;color:#f0c040;max-height:80px;overflow-y:auto;user-select:text;-webkit-user-select:text';
+    answerDiv.textContent = answerCode;
+    statusEl.appendChild(answerDiv);
+
+    // 添加复制按钮
+    const copyBtn = document.createElement('button');
+    copyBtn.textContent = '📋 复制回应码';
+    copyBtn.className = 'menu-btn btn-start';
+    copyBtn.style.cssText = 'min-width:160px;padding:8px 16px;font-size:14px;margin-top:8px';
+    copyBtn.onclick = () => copyJoinAnswerCode();
+    statusEl.appendChild(copyBtn);
+
+    // 等待 DataChannel 打开（游戏将在 dc.onopen 中自动开始）
+    const waitingDiv = document.createElement('div');
+    waitingDiv.style.cssText = 'margin-top:12px;font-size:12px;color:#7eb8fe';
+    waitingDiv.textContent = '正在连接房主...';
+    statusEl.appendChild(waitingDiv);
+
+  } catch (e) {
+    console.error(e);
+    document.getElementById('join-status').textContent = '❌ 连接失败: ' + e.message;
+  }
+}
+
+// 房主提交Answer码
+async function submitHostAnswer() {
+  const input = document.getElementById('host-answer-input');
+  const code = input.value.trim();
+  if (!code) {
+    alert('请输入对方发来的回应代码');
+    return;
+  }
+  await handleAnswerCode(code);
+}
+
+// 房主点击"已收到回应码"按钮
+function showHostAnswerSection() {
+  document.getElementById('host-answer-section').style.display = 'flex';
+  const btn = document.getElementById('show-host-answer-btn');
+  if (btn) btn.style.display = 'none';
+}
+
+// 房主收到Answer后的处理
+async function handleAnswerCode(answerCode) {
+  try {
+    const answerDesc = JSON.parse(atob(answerCode));
+    await pc.setRemoteDescription(answerDesc);
+    document.getElementById('online-status').textContent = '✅ 对手已连接！等待 DataChannel 打开...';
+    document.getElementById('host-answer-section').style.display = 'none';
+    // 游戏将在 dc.onopen 中自动开始，无需手动发送 game_start
+  } catch (e) {
+    alert('无效的回应代码: ' + e.message);
+  }
+}
+
+// 复制加入方的回应码
+function copyJoinAnswerCode() {
+  const codeEl = document.getElementById('join-answer-code');
+  const code = codeEl ? (codeEl.textContent || codeEl.innerText) : '';
+  if (!code) {
+    alert('回应码为空');
+    return;
+  }
+
+  // 尝试多种复制方式
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(code).then(() => {
+      alert('✅ 回应码已复制！请发给房主');
+    }).catch(() => {
+      tryFallbackCopyJoin(code);
+    });
+    return;
+  }
+  tryFallbackCopyJoin(code);
+}
+
+function tryFallbackCopyJoin(text) {
+  // 修复：在函数内部获取 codeEl，而不是依赖外部变量
+  const codeEl = document.getElementById('join-answer-code');
+
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  // 修复：确保 textarea 可以被选中（覆盖 body 的 user-select:none）
+  textarea.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0;user-select:text;-webkit-user-select:text';
+  document.body.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
+
+  let copied = false;
+  try {
+    copied = document.execCommand('copy');
+  } catch (e) {
+    copied = false;
+  }
+  document.body.removeChild(textarea);
+
+  if (copied) {
+    alert('✅ 回应码已复制！请发给房主');
+  } else {
+    alert('自动复制失败，请手动选择代码并复制（Ctrl+C）');
+    // 尝试高亮显示回应码方便用户手动复制
+    if (codeEl) {
+      codeEl.style.userSelect = 'text';
+      codeEl.style.webkitUserSelect = 'text';
+      codeEl.style.cursor = 'text';
+      const range = document.createRange();
+      range.selectNodeContents(codeEl);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+      // 3秒后清除选择
+      setTimeout(() => { sel.removeAllRanges(); }, 3000);
+    }
+  }
+}
+
+function cancelJoin() {
+  showView('online');
+  document.getElementById('join-room-input').value = '';
+}
+
+function cancelOnline() {
+  cleanupP2P();
+  showView('menu');
+}
+
+function cleanupP2P() {
+  if (dataChannel) { dataChannel.close(); dataChannel = null; }
+  if (pc) { pc.close(); pc = null; }
+  roomId = null;
+  pendingCandidates = [];
+}
+
+// 联机游戏初始化
+function startOnlineGame(yourTurn, playerIdx) {
+  console.log('startOnlineGame called, yourTurn:', yourTurn, 'playerIdx:', playerIdx);
+  isOnlineMode = true;
+  myPlayerIndex = playerIdx;
+  isPlayerTurn = yourTurn;
+
+  // 重置游戏状态
+  board = Array(TOTAL).fill(null);
+  selectedCard = null;
+  round = 1;
+  playerScore = 0; aiScore = 0;
+  gameOver = false;
+  currentMana = 1; maxMana = 1;
+  opponentHandCount = 4;
+  opponentDeckCount = 28;
+
+  // 创建牌堆
+  const playerPool = deckSelectedIndices.size >= 1
+    ? Array.from(deckSelectedIndices)
+    : CARD_DECK.map((c, i) => i);
+  playerDeck = createShuffledDeck(playerPool);
+  // 联机模式下不需要 aiDeck，但保留变量避免报错
+  aiDeck = [];
+
+  const playerDraw = drawFromDeck(playerDeck, 4);
+  hand = playerDraw.cards;
+  playerDeck = playerDraw.deck;
+
+  // 更新UI标签
+  document.getElementById('p-label').textContent = '你';
+  document.getElementById('o-label').textContent = '对手';
+  document.getElementById('online-tag').style.display = 'inline';
+
+  console.log('Calling renderBoard, renderHand, updateInfo...');
+  renderBoard(); renderHand(); renderEnemyHand(); updateInfo();
+  document.getElementById('battle-log').textContent = yourTurn ? '你的回合！' : '等待对手行动...';
+  console.log('startOnlineGame done');
+}
+
+// 处理对手放置卡牌
+function handleOpponentPlaced(msg) {
+  // 对手在 msg.idx 放置了 msg.card
+  const card = msg.card;
+  // 将对手的卡牌放到棋盘上（显示为敌方），规范化 atk/def 字段
+  const normalized = normalizeCard({
+    owner: 'ai',
+    deckIdx: card.deckIdx,
+    name: card.name, skill: card.skill,
+    t: card.t, b: card.b, l: card.l, r: card.r,
+    cost: card.cost,
+    // 若对手传来了攻防分离数据则使用
+    ta: card.ta, ba: card.ba, la: card.la, ra: card.ra,
+    td: card.td, bd: card.bd, ld: card.ld, rd: card.rd,
+    flipped: false, locked: false, boosted: false
+  });
+  board[msg.idx] = normalized;
+
+  // 更新对手手牌数量（从消息中获取）
+  if (msg.handCount !== undefined) {
+    opponentHandCount = msg.handCount;
+  } else {
+    opponentHandCount = Math.max(0, opponentHandCount - 1);
+  }
+
+  // 执行战斗判定（从对手视角）
+  // 注意：翻面可翻回机制下，已翻转的牌可被重新夺回
+  resolveCombat(msg.idx, 'ai');
+
+  // 更新回合
+  round = msg.round || round;
+  if (round <= MAX_ROUNDS) {
+    maxMana = Math.min(round, MAX_ROUNDS);
+    currentMana = maxMana;
+  }
+
+  isPlayerTurn = true;
+
+  // 玩家抽1张牌
+  if (playerDeck.length > 0 && hand.length < MAX_HAND_SIZE) {
+    const draw = drawFromDeck(playerDeck, 1);
+    hand.push(...draw.cards);
+    playerDeck = draw.deck;
+  }
+
+  renderBoard(); renderHand(); renderEnemyHand(); calcScore(); updateInfo();
+
+  if (board.every(c => c !== null) || round > MAX_ROUNDS) {
+    endGame();
+  }
+}
+
+// 处理对手跳过回合
+function handleOpponentSkipped(msg) {
+  round = msg.round || round;
+  if (round <= MAX_ROUNDS) {
+    maxMana = Math.min(round, MAX_ROUNDS);
+    currentMana = maxMana;
+  }
+  // 更新对手手牌数量（跳过回合后会抽1张牌）
+  if (msg.handCount !== undefined) {
+    opponentHandCount = msg.handCount;
+  } else {
+    opponentHandCount = Math.min(opponentHandCount + 1, 8);
+  }
+  isPlayerTurn = true;
+
+  // 玩家抽1张牌
+  if (playerDeck.length > 0 && hand.length < MAX_HAND_SIZE) {
+    const draw = drawFromDeck(playerDeck, 1);
+    hand.push(...draw.cards);
+    playerDeck = draw.deck;
+  }
+
+  setBattleLog('对手跳过了回合');
+  renderBoard(); renderHand(); renderEnemyHand(); updateInfo();
+}
+
+// 发送我的操作到对手（通过P2P）
+function sendPlaceCard(idx, card) {
+  // 构建卡牌数据，包含攻防分离字段
+  const cardData = {
+    deckIdx: card.deckIdx,
+    name: card.name,
+    skill: card.skill,
+    t: card.t, b: card.b, l: card.l, r: card.r,
+    cost: card.cost
+  };
+  // 如果有攻防分离数据，一并发送
+  if (card.t_atk !== undefined) {
+    cardData.ta = card.t_atk; cardData.td = card.t_def;
+    cardData.ba = card.b_atk; cardData.bd = card.b_def;
+    cardData.la = card.l_atk; cardData.ld = card.l_def;
+    cardData.ra = card.r_atk; cardData.rd = card.r_def;
+  }
+  sendP2P({
+    type: 'place_card',
+    idx: idx,
+    card: cardData,
+    mana: currentMana,
+    round: round + 1,
+    handCount: hand.length - 1  // 出牌后手牌数减1
+  });
+}
+
+function sendSkipTurn() {
+  sendP2P({
+    type: 'skip_turn',
+    round: round + 1,
+    handCount: hand.length + 1  // 跳过回合后会抽1张牌，所以手牌数+1
+  });
+}
+
+// 相邻关系（4列×3行）
+const NEIGHBORS = [];
+function buildNeighbors() {
+  for (let i = 0; i < TOTAL; i++) {
+    const nb = [], row = Math.floor(i / COLS), col = i % COLS;
+    if (row > 0)       nb.push({idx:i-COLS, dir:'t'});
+    if (row < ROWS-1)  nb.push({idx:i+COLS, dir:'b'});
+    if (col > 0)       nb.push({idx:i-1, dir:'l'});
+    if (col < COLS-1)  nb.push({idx:i+1, dir:'r'});
+    NEIGHBORS.push(nb);
+  }
+}
+buildNeighbors();
+
+// 位置名称（4×3）
+const POS_NAMES = [
+  '左上','中左','中右','右上',
+  '左中','正中','中2','右中',
+  '左下','中下L','中下R','右下'
+];
+
+// ========== 工具函数 ==========
+function oppositeDir(dir) { return {t:'b',b:'t',l:'r',r:'l'}[dir]; }
+
+// 规范化卡牌：确保每个方向都有 atk/def 字段
+// 若 ta/td 存在则使用，否则 atk == def == 原始值
+function normalizeCard(card) {
+  const dirs = ['t','b','l','r'];
+  const atkMap = { t:'ta', b:'ba', l:'la', r:'ra' };
+  const defMap = { t:'td', b:'bd', l:'ld', r:'rd' };
+  const c = { ...card };
+  dirs.forEach(d => {
+    c[`${d}_atk`] = (card[atkMap[d]] !== undefined) ? card[atkMap[d]] : card[d];
+    c[`${d}_def`] = (card[defMap[d]] !== undefined) ? card[defMap[d]] : card[d];
+    // 保存基础值用于对比显示
+    if (c[`${d}_base`] === undefined) {
+      c[`${d}_base`] = card[d];
+    }
+  });
+  return c;
+}
+
+// 判断某方向是否攻防分离
+function hasSplitStats(card) {
+  return ['t','b','l','r'].some(d => card[`${d}_atk`] !== card[`${d}_def`]);
+}
+
+// 获取攻击值（进攻时用）
+function getAtkVal(card, dir) {
+  let val = card[`${dir}_atk`] !== undefined ? card[`${dir}_atk`] : card[dir];
+  // 国王光环：若场上有未翻面的我方国王，人类阵营+1攻击力
+  if (card.race === '人类' && board) {
+    const hasKing = board.some(c =>
+      c && c.owner === card.owner &&
+      c.name === '国王' && !c.flipped
+    );
+    if (hasKing) val += 1;
+  }
+  return val;
+}
+
+// 获取卡牌基础值（含国王光环加成）- 用于显示
+function getDisplayVal(card, dir) {
+  let val = card[dir];
+  // 国王光环：若场上有未翻面的我方国王，人类阵营所有方向+1
+  if (card.race === '人类' && board) {
+    const hasKing = board.some(c =>
+      c && c.owner === card.owner &&
+      c.name === '国王' && !c.flipped
+    );
+    if (hasKing) val += 1;
+  }
+  return val;
+}
+// 获取防御值（被攻击时用）
+function getDefVal(card, dir) { return card[`${dir}_def`] !== undefined ? card[`${dir}_def`] : card[dir]; }
+// 保留原来的 getVal 用于兼容（返回基础值）
+function getVal(card, dir) { return card[dir]; }
+
+// 创建并洗牌（可传入自定义卡池索引数组）
+function createShuffledDeck(customPool) {
+  const pool = customPool ? [...customPool] : CARD_DECK.map((c, i) => i);
+  // Fisher-Yates 洗牌
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  return pool;
+}
+
+// 从指定牌堆抽 n 张牌，返回 { cards: [...], deck: 剩余牌堆 }
+function drawFromDeck(deck, n) {
+  const drawCount = Math.min(n, deck.length);
+  const drawn = deck.splice(0, drawCount);
+  return {
+    cards: drawn.map(idx => normalizeCard({ ...CARD_DECK[idx], deckIdx: idx })),
+    deck
+  };
+}
+
+// 获取技能对象
+function getSkill(card) { return card.skill ? SKILLS[card.skill] : null; }
+
+// ========== 初始化 ==========
+function init() {
+  board = Array(TOTAL).fill(null);
+  selectedCard = null;
+  round = 1; playerScore = 0; aiScore = 0;
+  gameOver = false; isPlayerTurn = true;
+  currentMana = 1; maxMana = 1;
+  // 重置盗贼技能费用修正
+  _playerNextManaDelta = 0;
+  _aiNextManaDelta = 0;
+  // 重置法术牌积分奖励
+  _playerSpellBonus = 0;
+  _aiSpellBonus = 0;
+
+  // 创建牌堆并开局抽4张（如果有自定义卡组则使用）
+  const playerPool = deckSelectedIndices.size >= 1
+    ? Array.from(deckSelectedIndices)
+    : CARD_DECK.map((c, i) => i);
+  playerDeck = createShuffledDeck(playerPool);
+  if (!isOnlineMode) {
+    aiDeck = createShuffledDeck();
+    // AI 开局抽4张牌
+    const aiDraw = drawFromDeck(aiDeck, 4);
+    window._aiHandState = aiDraw.cards;
+    aiDeck = aiDraw.deck;
+  }
+  const playerDraw = drawFromDeck(playerDeck, 4);
+  hand = playerDraw.cards;
+  playerDeck = playerDraw.deck;
+
+  renderBoard(); renderHand(); renderEnemyHand(); updateInfo();
+  document.getElementById('battle-log').textContent = '';
+}
+
+// ========== 渲染 ==========
+
+function cardHtml(c, onBoard) {
+  const sk = getSkill(c);
+  const skillHtml = sk
+    ? `<span class="card-skill-tag">${sk.icon} ${sk.name}</span>`
+    : '';
+  const costBadge = (c.cost != null)
+    ? `<div class="cost-badge">${c.cost}</div>` : '';
+  const raceBadge = c.race
+    ? `<div class="race-badge">${c.race}</div>` : '';
+
+  // 生成单个方向的 HTML（支持攻防分离）
+  function dirHtml(dir, cssClass) {
+    const atk = c[`${dir}_atk`] !== undefined ? c[`${dir}_atk`] : c[dir];
+    const def = c[`${dir}_def`] !== undefined ? c[`${dir}_def`] : c[dir];
+    // 应用国王光环加成到显示值
+    const displayAtk = getAtkVal(c, dir);
+    const displayDef = getDefVal(c, dir);
+    // 计算颜色类（根据与基础值比较）
+    const baseVal = c[`${dir}_base`] !== undefined ? c[`${dir}_base`] : c[dir];
+    const displayVal = getDisplayVal(c, dir);
+    let colorClass = '';
+    if (displayVal > baseVal) colorClass = ' val-buff';
+    else if (displayVal < baseVal) colorClass = ' val-nerf';
+
+    if (atk === def) {
+      // 攻防相同：圆形显示（原来的样式），但显示加成后的值
+      return `<div class="side-val ${cssClass}${colorClass}">${displayVal}</div>`;
+    } else {
+      // 攻防不同：三角形（攻）+ 正方形（防）
+      const atkColorClass = displayAtk > atk ? ' val-buff' : (displayAtk < atk ? ' val-nerf' : '');
+      const defColorClass = displayDef > def ? ' val-buff' : (displayDef < def ? ' val-nerf' : '');
+      return `<div class="side-val split-val ${cssClass}">
+        <span class="atk-tri${atkColorClass}">${displayAtk}</span>
+        <span class="def-sq${defColorClass}">${displayDef}</span>
+      </div>`;
+    }
+  }
+
+  // 道具牌：不显示四周数值，只显示费用、种族、名称和大图标
+  if (c.race === '道具') {
+    const spellIcon = sk ? sk.icon : '🎴';
+    return `
+      ${costBadge}
+      ${raceBadge}
+      <div class="spell-card-icon">${spellIcon}</div>
+      <div class="mid">
+        <span class="card-name">${c.name}</span>
+        ${skillHtml}
+      </div>
+    `;
+  }
+
+  return `
+    ${costBadge}
+    ${raceBadge}
+    ${dirHtml('t', 'top')}
+    ${dirHtml('l', 'left')}
+    <div class="mid">
+      <span class="card-name">${c.name}</span>
+      ${skillHtml}
+    </div>
+    ${dirHtml('r', 'right')}
+    ${dirHtml('b', 'bot')}
+  `;
+}
+
+function renderBoard() {
+  const b = document.getElementById('board');
+  b.innerHTML = '';
+  for (let i = 0; i < TOTAL; i++) {
+    const cell = document.createElement('div');
+    cell.className = 'cell' + (board[i] ? ' taken' : '');
+    cell.dataset.idx = i;
+
+    if (board[i]) {
+      const c = board[i];
+      const el = document.createElement('div');
+      el.className = 'card-on-board';
+      // 同时添加 owner 类和 flipped 类（flipped 只控制明暗，owner 控制颜色）
+      if (c.owner === 'player') el.classList.add('player-card');
+      else if (c.owner === 'ai') el.classList.add('ai-card');
+      else el.classList.add('ai-card'); // 默认使用AI样式，避免不可见
+      if (c.flipped) el.classList.add('flipped');
+      if (c.locked) el.style.boxShadow = '0 0 12px #4090d066 inset';
+      el.innerHTML = cardHtml(c, true);
+
+      // 绑定 tooltip
+      el.addEventListener('mouseenter', (e) => showTooltip(e, c));
+      el.addEventListener('mouseleave', hideTooltip);
+
+      // 右键查看卡牌详情
+      el.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        showCardDetail(c);
+      });
+
+      cell.appendChild(el);
+    }
+
+    if (!board[i]) {
+      cell.addEventListener('click', () => onCellClick(i));
+    }
+    b.appendChild(cell);
+  }
+}
+
+function renderEnemyHand() {
+  const h = document.getElementById('enemy-hand');
+  if (!h) return;
+  h.innerHTML = '';
+  // 联机模式：显示对手手牌数量（背面）
+  // 离线模式：显示 AI 手牌数量（背面，从 window._aiHandState 读取）
+  const count = isOnlineMode ? opponentHandCount : (window._aiHandState || []).length;
+  console.log('renderEnemyHand: isOnlineMode=', isOnlineMode, 'count=', count, '_aiHandState=', window._aiHandState);
+  for (let i = 0; i < count; i++) {
+    const el = document.createElement('div');
+    el.className = 'enemy-hand-card';
+    el.innerHTML = '<div class="card-back"></div>';
+    h.appendChild(el);
+  }
+}
+
+function renderHand() {
+  const h = document.getElementById('hand');
+  h.innerHTML = '';
+  hand.forEach((c, i) => {
+    const el = document.createElement('div');
+    const cantAfford = (c.cost != null && c.cost > currentMana);
+    const isSpell = c.race === '道具';
+    el.className = `hand-card${selectedCard === i ? ' selected' : ''}${cantAfford ? ' cant-afford' : ''}${isSpell ? ' spell-card' : ''}`;
+    el.innerHTML = cardHtml(c, false);
+
+    // tooltip
+    el.addEventListener('mouseenter', (e) => showTooltip(e, c));
+    el.addEventListener('mouseleave', hideTooltip);
+
+    // 右键查看卡牌详情
+    el.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      showCardDetail(c);
+    });
+
+    // 道具牌（法术牌）：点击直接使用，不选牌、不弹旋转
+    if (!gameOver) {
+      el.addEventListener('click', () => {
+        if (cantAfford) {
+          setBattleLog(`⚠️ 费用不足！${c.name} 需要 ${c.cost} 点，当前仅剩 ${currentMana} 点`);
+          return;
+        }
+        if (c.race === '道具') {
+          showSpellConfirm(i, c);
+          return;
+        }
+        selectedCard = (selectedCard === i) ? null : i;
+        renderHand();
+      });
+    }
+    h.appendChild(el);
+  });
+}
+
+// ===== 费用栏渲染 =====
+function renderManaBar() {
+  const container = document.getElementById('mana-gems');
+  container.innerHTML = '';
+  for (let i = 1; i <= maxMana; i++) {
+    const gem = document.createElement('div');
+    gem.className = 'mana-gem' + (i <= currentMana ? ' filled' : ' mana-gem-spent');
+    gem.textContent = '';
+    container.appendChild(gem);
+  }
+  document.getElementById('mana-text').textContent = `${currentMana}/${maxMana}`;
+}
+
+function updateInfo() {
+  // 显示手牌数量和牌堆剩余（统一更新 info 区域）
+  const infoEl = document.getElementById('info');
+  if (infoEl) {
+    if (gameOver) {
+      infoEl.innerHTML = `第 <span class="hl">${round}</span> / <span>${MAX_ROUNDS}</span> 回合 — <span class="hl">游戏结束</span>` +
+        (isOnlineMode ? `<span id="online-tag" style="color:#50b060;font-size:12px;margin-left:8px">🌐 联机</span>` : '');
+    } else {
+      const deckCount = playerDeck.length;
+      const turnText = isOnlineMode
+        ? (isPlayerTurn ? '你的回合' : '等待对手...')
+        : (isPlayerTurn ? '你的回合' : 'AI思考中...');
+      const onlineInfo = isOnlineMode
+        ? ` <span style="color:#888;font-size:13px">| 你: ${hand.length}张 | 对手: ${opponentHandCount}张</span>`
+        : ` <span style="color:#888;font-size:13px">| 手牌 ${hand.length}/8 | 牌堆 ${deckCount}张</span>`;
+      infoEl.innerHTML = `第 <span class="hl">${round}</span> / <span>${MAX_ROUNDS}</span> 回合 — <span class="hl">${turnText}</span>` +
+        (isOnlineMode ? `<span id="online-tag" style="color:#50b060;font-size:12px;margin-left:8px">🌐 联机</span>` : '') +
+        onlineInfo;
+    }
+  }
+  document.getElementById('p-score').textContent = playerScore;
+  document.getElementById('ai-score').textContent = aiScore;
+  renderManaBar();
+  renderEnemyHand();
+
+  // 跳过回合按钮：仅玩家回合且游戏未结束时可用
+  const skipBtn = document.getElementById('skip-btn');
+  if (skipBtn) skipBtn.disabled = gameOver || !isPlayerTurn;
+}
+
+function setBattleLog(msg) {
+  document.getElementById('battle-log').innerHTML = msg;
+}
+
+// ========== Tooltip ==========
+const tooltipEl = document.getElementById('tooltip');
+function showTooltip(e, c) {
+  const sk = getSkill(c);
+  tooltipEl.querySelector('.tt-name').textContent = c.name;
+  tooltipEl.querySelector('.tt-skill').textContent = sk ? `${sk.icon} ${sk.name}` : '—';
+  tooltipEl.querySelector('.tt-desc').textContent = sk ? sk.desc : '一张普通卡牌';
+
+  // tooltip 显示攻防分离信息
+  function ttDirStr(dir, arrow) {
+    const atk = c[`${dir}_atk`] !== undefined ? c[`${dir}_atk`] : c[dir];
+    const def = c[`${dir}_def`] !== undefined ? c[`${dir}_def`] : c[dir];
+    if (atk === def) return `${arrow} ${atk}`;
+    return `${arrow} ▲${atk}/□${def}`;
+  }
+  tooltipEl.querySelector('.tt-stats').innerHTML =
+    `<span>${ttDirStr('t','↑')}</span><span>${ttDirStr('b','↓')}</span><span>${ttDirStr('l','←')}</span><span>${ttDirStr('r','→')}</span>` +
+    (c.cost != null ? `<span style="grid-column:1/-1;color:#f0c040;margin-top:4px">💎 费用: ${c.cost}</span>` : '');
+
+  const rect = e.target.getBoundingClientRect();
+  let left = rect.right + 8;
+  let top = rect.top;
+  if (left + 260 > window.innerWidth) left = rect.left - 260;
+  if (top + 220 > window.innerHeight) top = window.innerHeight - 230;
+  tooltipEl.style.left = left + 'px';
+  tooltipEl.style.top = top + 'px';
+  tooltipEl.classList.add('show');
+}
+function hideTooltip() { tooltipEl.classList.remove('show'); }
+
+// ========== 卡牌详情弹窗（右键查看）==========
+
+const detailOverlay = document.getElementById('card-detail');
+const detailBox = document.getElementById('card-detail-box');
+
+let _cdBaseCard = null;   // 原始卡牌数据（未旋转）
+let _cdRotStep = 0;       // 当前旋转步数（0~3，每步90°）
+
+function showCardDetail(c) {
+  if (!detailOverlay || !detailBox) return;
+
+  // 保存原始卡牌数据，重置旋转
+  _cdBaseCard = c;
+  _cdRotStep = 0;
+
+  _cdFillDetail(c);
+
+  // 渲染预览卡片
+  const previewEl = document.getElementById('cd-preview-card');
+  if (previewEl) {
+    previewEl.innerHTML = cardHtml(c, false);
+    previewEl.style.transform = 'rotate(0deg)';
+    // 强制应用 grid 布局（确保覆盖其他样式）
+    previewEl.style.display = 'grid';
+    previewEl.style.gridTemplateAreas = '". top ." "left mid right" ". bot ."';
+    previewEl.style.gridTemplateColumns = '1fr auto 1fr';
+    previewEl.style.gridTemplateRows = 'auto 1fr auto';
+    previewEl.style.padding = '2px';
+    previewEl.style.width = '110px';
+    previewEl.style.height = '110px';
+  }
+  document.getElementById('cd-rotate-hint').textContent = '旋转 0°';
+
+  // 显示
+  detailOverlay.classList.add('show');
+}
+
+// 填充详情数据（支持旋转后的卡牌）
+function _cdFillDetail(c) {
+  const sk = getSkill(c);
+
+  document.getElementById('cd-name').textContent = c.name;
+  document.getElementById('cd-name').style.color = '#7eb8fe';
+
+  // 显示种族归属（如人类、野兽、元素等）
+  const raceEl = document.getElementById('cd-owner');
+  const raceName = c.race || '未知';
+  const raceColors = {
+    '人类': { color: '#d4aa44', bg: '#3a3010' },
+    '野兽': { color: '#e06040', bg: '#3a1510' },
+    '元素': { color: '#4090d0', bg: '#101a3a' },
+    '龙族': { color: '#a060d0', bg: '#2a103a' },
+    '亡灵': { color: '#50a080', bg: '#0a2a1a' },
+    '植物': { color: '#50b060', bg: '#0a2a10' },
+    '机械': { color: '#8888aa', bg: '#1a1a2a' },
+    '幻灵': { color: '#d080d0', bg: '#2a102a' },
+    '道具': { color: '#f0c040', bg: '#2a2010' }
+  };
+  const rc = raceColors[raceName] || { color: '#aaa', bg: '#2a2a2a' };
+  raceEl.textContent = raceName;
+  raceEl.style.color = rc.color;
+  raceEl.style.background = rc.bg;
+  raceEl.style.padding = '2px 8px';
+  raceEl.style.borderRadius = '4px';
+  raceEl.style.fontSize = '12px';
+  raceEl.style.fontWeight = '600';
+
+  document.getElementById('cd-cost').textContent = `💎 费用 ${c.cost}`;
+
+  // 数值（根据与基础值比较显示不同颜色，攻防分离时分两行显示）
+  const dirs = ['t','b','l','r'];
+  const dirNames = { t: '↑ 上', b: '↓ 下', l: '← 左', r: '→ 右' };
+  dirs.forEach(d => {
+    const el = document.getElementById(`cd-${d}`);
+    const atkRaw = c[`${d}a`] !== undefined ? c[`${d}a`] : c[d];
+    const defRaw = c[`${d}d`] !== undefined ? c[`${d}d`] : c[d];
+    const displayAtk = getAtkVal(c, d);
+    const displayDef = getDefVal(c, d);
+    if (atkRaw !== defRaw) {
+      // 攻防分离：显示两行
+      el.textContent = '';
+      el.style.color = '';
+      el.innerHTML = `<span style="display:block;font-size:18px;color:#ff7840;font-weight:800;line-height:1.1">▲${displayAtk}</span><span style="display:block;font-size:14px;color:#4aabff;font-weight:800;line-height:1.1">■${displayDef}</span>`;
+    } else {
+      const baseVal = c[`${d}_base`] !== undefined ? c[`${d}_base`] : c[d];
+      const displayVal = getDisplayVal(c, d);
+      el.textContent = displayVal;
+      if (displayVal > baseVal) {
+        el.style.color = '#50c878';
+      } else if (displayVal < baseVal) {
+        el.style.color = '#e06040';
+      } else {
+        el.style.color = '#7eb8fe';
+      }
+    }
+  });
+
+  // 条形图
+  const barsHtml = dirs.map(d => {
+    const baseVal = c[`${d}_base`] !== undefined ? c[`${d}_base`] : c[d];
+    const displayVal = getDisplayVal(c, d);
+    const pct = (displayVal / 9) * 100;
+    let barColor = '#4a88cc';
+    if (displayVal > baseVal) barColor = '#50c878';
+    else if (displayVal < baseVal) barColor = '#e06040';
+    return `<div class="cd-bar-row">
+      <span class="cd-bar-label">${dirNames[d].charAt(0)}</span>
+      <div class="cd-bar-track"><div class="cd-bar-fill" style="width:${pct}%;background:${barColor}"></div></div>
+      <span class="cd-bar-val" style="color:${barColor}">${displayVal}</span>
+    </div>`;
+  }).join('');
+  document.getElementById('cd-bars').innerHTML = barsHtml;
+
+  // 技能信息
+  if (sk) {
+    document.getElementById('cd-skname').textContent = `${sk.icon} ${sk.name}`;
+    document.getElementById('cd-skdesc').textContent = sk.desc;
+    document.getElementById('cd-skdesc').className = 'cd-skill-desc';
+  } else {
+    document.getElementById('cd-skname').textContent = '—';
+    document.getElementById('cd-skdesc').textContent = '此卡牌没有特殊技能，依靠纯数值进行对抗。';
+    document.getElementById('cd-skdesc').className = 'cd-no-skill';
+  }
+
+  // Buff 效果检测与显示
+  const buffSection = document.getElementById('cd-buff-section');
+  const buffsContainer = document.getElementById('cd-buffs');
+  const buffs = [];
+
+  // 检测国王光环
+  if (c.race === '人类' && board) {
+    const kingCard = board.find(cell =>
+      cell && cell.owner === c.owner &&
+      cell.name === '国王' && !cell.flipped
+    );
+    if (kingCard) {
+      buffs.push({
+        icon: '👑',
+        name: '国王光环',
+        desc: '四个方向攻击力 +1',
+        source: `来自场上的 ${kingCard.name}`
+      });
+    }
+  }
+
+  // 检测冰封锁定
+  if (c.locked) {
+    buffs.push({
+      icon: '❄️',
+      name: '冰封锁定',
+      desc: '本回合无法被翻转',
+      source: '来自敌方冰封技能'
+    });
+  }
+
+  // 检测骑士属性分配
+  if (c.name === '骑士' && c._attrAssigned) {
+    buffs.push({
+      icon: '⚔️',
+      name: '属性强化',
+      desc: '已分配额外属性点',
+      source: '初始放置时分配'
+    });
+  }
+
+  if (buffs.length > 0) {
+    buffSection.style.display = 'block';
+    buffsContainer.innerHTML = buffs.map(b => `
+      <div class="cd-buff-item">
+        <span class="cd-buff-icon">${b.icon}</span>
+        <div class="cd-buff-info">
+          <div class="cd-buff-name">${b.name}</div>
+          <div class="cd-buff-desc">${b.desc}</div>
+          <div class="cd-buff-source">${b.source}</div>
+        </div>
+      </div>
+    `).join('');
+  } else {
+    buffSection.style.display = 'none';
+  }
+}
+
+// 点击左/右箭头旋转卡牌预览
+// dir: -1 = 向左(逆时针), +1 = 向右(顺时针)
+function cdRotate(dir) {
+  if (!_cdBaseCard) return;
+  _cdRotStep = ((_cdRotStep + dir) % 4 + 4) % 4;
+
+  // 旋转后的卡牌数据（用于更新数值面板）
+  const rotated = rotateCard(_cdBaseCard, _cdRotStep);
+
+  // 更新旋转预览图（CSS transform）
+  const previewEl = document.getElementById('cd-preview-card');
+  if (previewEl) {
+    previewEl.style.transform = `rotate(${_cdRotStep * 90}deg)`;
+  }
+
+  // 更新旋转角度提示
+  const degMap = { 0: '旋转 0°', 1: '旋转 90°（顺时针）', 2: '旋转 180°', 3: '旋转 270°（逆时针）' };
+  document.getElementById('cd-rotate-hint').textContent = degMap[_cdRotStep];
+
+  // 更新上方数值面板（显示旋转后的数值）
+  _cdFillDetailValues(rotated);
+}
+
+// 只更新数值部分（不重绘标题/技能）
+function _cdFillDetailValues(c) {
+  const dirs = ['t','b','l','r'];
+  const dirNames = { t: '↑ 上', b: '↓ 下', l: '← 左', r: '→ 右' };
+  dirs.forEach(d => {
+    const el = document.getElementById(`cd-${d}`);
+    const atkRaw = c[`${d}a`] !== undefined ? c[`${d}a`] : c[d];
+    const defRaw = c[`${d}d`] !== undefined ? c[`${d}d`] : c[d];
+    const displayAtk = getAtkVal(c, d);
+    const displayDef = getDefVal(c, d);
+    if (atkRaw !== defRaw) {
+      el.textContent = '';
+      el.style.color = '';
+      el.innerHTML = `<span style="display:block;font-size:18px;color:#ff7840;font-weight:800;line-height:1.1">▲${displayAtk}</span><span style="display:block;font-size:14px;color:#4aabff;font-weight:800;line-height:1.1">■${displayDef}</span>`;
+    } else {
+      const baseVal = c[`${d}_base`] !== undefined ? c[`${d}_base`] : c[d];
+      const displayVal = getDisplayVal(c, d);
+      el.textContent = displayVal;
+      if (displayVal > baseVal) {
+        el.style.color = '#50c878';
+      } else if (displayVal < baseVal) {
+        el.style.color = '#e06040';
+      } else {
+        el.style.color = '#7eb8fe';
+      }
+    }
+  });
+  // 更新条形图
+  const barsHtml = dirs.map(d => {
+    const baseVal = c[`${d}_base`] !== undefined ? c[`${d}_base`] : c[d];
+    const displayVal = getDisplayVal(c, d);
+    const pct = (displayVal / 9) * 100;
+    let barColor = '#4a88cc';
+    if (displayVal > baseVal) barColor = '#50c878';
+    else if (displayVal < baseVal) barColor = '#e06040';
+    return `<div class="cd-bar-row">
+      <span class="cd-bar-label">${dirNames[d].charAt(0)}</span>
+      <div class="cd-bar-track"><div class="cd-bar-fill" style="width:${pct}%;background:${barColor}"></div></div>
+      <span class="cd-bar-val" style="color:${barColor}">${displayVal}</span>
+    </div>`;
+  }).join('');
+  document.getElementById('cd-bars').innerHTML = barsHtml;
+}
+
+function hideCardDetail() {
+  detailOverlay.classList.remove('show');
+  _cdRotStep = 0;
+}
+
+// 点击遮罩层关闭
+detailOverlay.addEventListener('click', (e) => {
+  if (e.target === detailOverlay) hideCardDetail();
+});
+
+// ESC 关闭
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') hideCardDetail();
+});
+
+// 渲染详情弹窗的预览卡片（复用旋转弹窗的格式）
+function renderRotCardPreview(el, card) {
+  el.style.borderColor = '#3a5a8a';
+  el.style.position = 'relative';
+  el.style.width = '100%';
+  el.style.height = '100%';
+  // 确保卡牌数据已规范化（攻防分离字段转换为 _atk/_def 格式）
+  const normalized = normalizeCard(card);
+  el.innerHTML = `
+    ${rotPreviewDirHtml(normalized, 't')}
+    ${rotPreviewDirHtml(normalized, 'l')}
+    <div class="rp-mid" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:8px;color:#6888aa;text-align:center;z-index:4;">${card.name}</div>
+    ${rotPreviewDirHtml(normalized, 'r')}
+    ${rotPreviewDirHtml(normalized, 'b')}
+  `;
+}
+
+// ========== 战斗判定引擎 ==========
+function resolveCombat(idx, placerOwner) {
+  const me = board[idx];
+  const mySk = getSkill(me);
+  const logs = [];
+  _rabbitEscapePending = null; // 每次战斗重置
+
+  // --- 主动技能：共振（放置时触发）---
+  if (mySk && mySk.name === '共振') {
+    NEIGHBORS[idx].forEach(({ idx: nIdx }) => {
+      const friend = board[nIdx];
+      if (friend && friend.owner === me.owner && !friend.locked) {
+        friend.t = Math.min(friend.t + 1, 9);
+        friend.b = Math.min(friend.b + 1, 9);
+        friend.l = Math.min(friend.l + 1, 9);
+        friend.r = Math.min(friend.r + 1, 9);
+        logs.push(`<span style="color:#7eb8fe">⚔️ [${mySk.name}] ${friend.name} 共振强化！</span>`);
+      }
+    });
+  }
+
+  let flipCount = 0;
+  const flippedIndices = [];
+
+  // --- 逐个邻居进行数值对抗 ---
+  // 现在 flipped 的牌也可以被翻回（改变 owner），只要 owner 不同
+  NEIGHBORS[idx].forEach(({ idx: nIdx, dir }) => {
+    const enemy = board[nIdx];
+    if (!enemy || enemy.locked || enemy.owner === me.owner) return;
+
+    // 进攻方使用攻击值（atk），防御方使用防御值（def）
+    let myAtkVal = getAtkVal(me, dir);
+    let enemyDefVal = getDefVal(enemy, oppositeDir(dir));
+
+    // ==== 被动技能：进攻方修正 ====
+    if (mySk) {
+      // 全局加成（均衡之力）
+      if (mySk.calcGlobal) myAtkVal = mySk.calcGlobal(myAtkVal);
+      // 方向攻击加成（烈焰冲击）
+      if (mySk.calcAtk) myAtkVal = mySk.calcAtk(myAtkVal, dir);
+    }
+
+    // ==== 被动技能：防御方修正 ====
+    const enemySk = getSkill(enemy);
+    if (enemySk) {
+      if (enemySk.calcDef) enemyDefVal = enemySk.calcDef(enemyDefVal);
+      if (enemySk.calcGlobal) enemyDefVal = enemySk.calcGlobal(enemyDefVal);
+    }
+
+    // ==== 判定结果：进攻 atk > 防御 def 即可翻转 ====
+    const tieWins = mySk && mySk.tieWins;
+    const win = (myAtkVal > enemyDefVal) || (tieWins && myAtkVal === enemyDefVal);
+
+    if (win) {
+      const wasFlipped = enemy.flipped;
+      // === 白兔逃跑技能检测 ===
+      const enemySkill = getSkill(enemy);
+      if (enemySkill && enemySkill.name === '逃跑' && enemy.owner !== me.owner) {
+        // 检测是否有空格可逃
+        const escapeCells = NEIGHBORS[nIdx].filter(({ idx: eIdx }) => board[eIdx] === null);
+        if (escapeCells.length > 0) {
+          // 有路可逃，标记待处理，跳过翻转
+          if (!_rabbitEscapePending) {
+            _rabbitEscapePending = { rabbitIdx: nIdx, attackerOwner: me.owner };
+          }
+          const posName = POS_NAMES[nIdx];
+          logs.push(`<span style="color:#a0e080">🐰 [逃跑] ${posName}的白兔拒绝被翻面！</span>`);
+          return; // 不翻转，等待逃跑选择
+        }
+        // 无路可逃，正常翻转
+        logs.push(`<span style="color:#e08040">🐰 [逃跑] 无路可逃！白兔被翻面！</span>`);
+      }
+      // === 护卫盾检查：若目标有护盾则消耗护盾代替翻转 ===
+      if (enemy._shielded) {
+        enemy._shielded = false;
+        const posName = POS_NAMES[nIdx];
+        logs.push(`<span style="color:#7eb8fe">🛡️ [护卫] ${posName}的护盾抵挡了攻击！</span>`);
+        return;
+      }
+      enemy.flipped = false;      // 翻回为正面
+      enemy.owner = me.owner;     // 改变归属
+      flippedIndices.push(nIdx);
+      flipCount++;
+      const posName = POS_NAMES[nIdx];
+      const mySkStr = (mySk && (mySk.calcAtk || mySk.calcGlobal))
+        ? `[${mySk.name}]` : '';
+      const actionText = wasFlipped ? '夺回' : '翻转';
+      logs.push(`${posName}被${actionText}！${mySkStr}(${myAtkVal} vs ${enemyDefVal})`);
+    }
+
+  });
+
+  // --- 主动技能：吸收（翻转后触发）---
+  if (mySk && mySk.name === '吸收' && flipCount > 0) {
+    me.t = Math.min(me.t + flipCount, 9);
+    me.b = Math.min(me.b + flipCount, 9);
+    me.l = Math.min(me.l + flipCount, 9);
+    me.r = Math.min(me.r + flipCount, 9);
+    logs.push(`<span style="color:#50b060">🌀 [吸收] 吸取能量！全属性+${flipCount}</span>`);
+  }
+
+  // --- 主动技能：冰封（翻转后锁定）---
+  if (mySk && mySk.name === '冰封') {
+    flippedIndices.forEach(ni => {
+      if (board[ni]) board[ni].locked = true;
+    });
+    if (flipCount > 0) logs.push(`<span style="color:#4090d0">❄️ [冰封] 敌方已被冻结！</span>`);
+  }
+
+    // --- 主动技能：连锁闪电 ---
+  // 联机模式：用固定判定替代 Math.random，避免双方状态不一致
+  if (mySk && mySk.name === '连锁闪电') {
+    const chained = new Set();
+    flippedIndices.forEach(ni => {
+      const chainTargets = NEIGHBORS[ni].filter(({ idx: ci }) => {
+        const ct = board[ci];
+        return ct && !ct.locked && ct.owner !== me.owner &&
+          !flippedIndices.includes(ci) && !chained.has(ci);
+      });
+      chainTargets.forEach(ct => {
+        // 联机模式：固定触发（0.3 < 0.5 恒为真），确保双方结果一致
+        const _rand = isOnlineMode ? 0.3 : Math.random();
+        if (_rand < 0.5) {
+          const wasFlipped = board[ct.idx].flipped;
+          board[ct.idx].flipped = false;
+          board[ct.idx].owner = me.owner;
+          chained.add(ct.idx);
+          const actionText = wasFlipped ? '夺回' : '击倒';
+          logs.push(`<span style="color:#a060d0">⚡ [连锁] ${POS_NAMES[ct.idx]}也被${actionText}！</span>`);
+        }
+      });
+    });
+  }
+
+  // --- 主动技能：烈焰爆发 ---
+  if (mySk && mySk.name === '烈焰爆发' && flipCount > 0) {
+    // 找到周围敌方牌（包括已被翻面的）
+    NEIGHBORS[idx].forEach(({ idx: nIdx }) => {
+      const target = board[nIdx];
+      if (target && !target.locked && target.owner !== me.owner) {
+        // 用我的最低面 vs 它的任意面（简单化：用平均值判断）
+        const avgMy = (me.t + me.b + me.l + me.r) / 4;
+        if (avgMy > 4) {
+          const wasFlipped = target.flipped;
+          target.flipped = false;
+          target.owner = me.owner;
+          const actionText = wasFlipped ? '夺回' : '波及';
+          logs.push(`<span style="color:#e06040">💥 [爆发] ${POS_NAMES[nIdx]}被${actionText}！</span>`);
+        }
+      }
+    });
+  }
+
+  // --- 主动技能：灼烧（翻转后施加灼烧DoT）---
+  if (mySk && mySk.name === '灼烧' && flipCount > 0) {
+    flippedIndices.forEach(ni => {
+      const target = board[ni];
+      if (target) {
+        target._burningTurns = 2; // 持续2回合
+        target._burningDmg = 1;   // 每回合-1防御值
+        logs.push(`<span style="color:#e06040">🔥 [灼烧] ${POS_NAMES[ni]}被灼烧！持续2回合受到1点伤害！</span>`);
+      }
+    });
+  }
+
+  // --- 主动技能：霜冻（翻转后减速）---
+  if (mySk && mySk.name === '霜冻' && flipCount > 0) {
+    flippedIndices.forEach(ni => {
+      const target = board[ni];
+      if (target) {
+        target._frosted = true;
+        // 减少该牌1个方向数值（代表速度降低）
+        const minDir = ['t','b','l','r'].reduce((a,b) => (target[a]||0) < (target[b]||0) ? a : b);
+        if (target[minDir] > 1) target[minDir] = Math.max(1, target[minDir] - 1);
+        logs.push(`<span style="color:#4090d0">❄️ [霜冻] ${POS_NAMES[ni]}被霜冻！速度下降！</span>`);
+      }
+    });
+  }
+
+  // --- 主动技能：护卫（出场时为相邻友方提供护盾）---
+  if (mySk && mySk.name === '护卫') {
+    let shieldCount = 0;
+    NEIGHBORS[idx].forEach(({ idx: nIdx }) => {
+      const ally = board[nIdx];
+      if (ally && ally.owner === me.owner && !ally._shielded) {
+        ally._shielded = true;
+        shieldCount++;
+      }
+    });
+    if (shieldCount > 0) {
+      logs.push(`<span style="color:#7eb8fe">🛡️ [护卫] 为${shieldCount}张友方卡牌提供了护盾！</span>`);
+    }
+  }
+
+  if (logs.length > 0) setBattleLog(logs.join('<br>'));
+  else setBattleLog('');
+
+  // --- 国王技能：再次比较（在resolveCombat结束后触发）---
+  if (mySk && mySk.name === '王之威仪') {
+    // 将国王的再次比较逻辑延迟到外部处理（因为需要UI交互）
+    // 返回标记，让调用方处理
+    return { kingDuel: true, idx, owner: placerOwner };
+  }
+
+  // --- 白兔逃跑：需要UI交互 ---
+  if (_rabbitEscapePending) {
+    return { kingDuel: false, rabbitEscape: true, placerOwner };
+  }
+
+  return { kingDuel: false };
+}
+
+// ========== 国王"再次比较"选择弹窗 ==========
+let _kingDuelPending = null; // { idx, owner }
+let _rabbitEscapePending = null; // { rabbitIdx, attackerOwner }
+let _rabbitEscapePlacerOwner = null; // 触发逃跑的那一方（谁放了卡）
+
+// ========== 盗贼"本质小偷"：下回合费用修正 ==========
+// 正数 = 玩家下回合额外加费用；负数 = 玩家下回合减费用
+let _playerNextManaDelta = 0;
+let _aiNextManaDelta = 0;
+
+function showKingDuelPicker(result) {
+  if (!result || !result.kingDuel) return false;
+  _kingDuelPending = { idx: result.idx, owner: result.owner };
+
+  const overlay = document.getElementById('king-duel-overlay');
+  const boardEl = document.getElementById('king-duel-board');
+  boardEl.innerHTML = '';
+
+  // 生成棋盘缩略图（4×3）
+  for (let i = 0; i < TOTAL; i++) {
+    const cell = document.createElement('div');
+    const c = board[i];
+    cell.style.cssText = `
+      aspect-ratio:1; border-radius:6px; border:1.5px solid #2a3a5a;
+      background: ${c ? (c.owner === 'player' ? '#1a2a4a' : '#3a1a2a') : '#0a0e1a'};
+      display:flex; align-items:center; justify-content:center;
+      font-size:11px; color:${c ? '#e0e6f0' : '#3a4a6a'}; cursor:${c ? 'pointer' : 'default'};
+      transition: all 0.15s;
+    `;
+    if (c) {
+      cell.textContent = c.name;
+      cell.style.fontSize = '10px';
+      cell.style.textAlign = 'center';
+      cell.style.padding = '2px';
+      // 国王的"再次比较"只能选择已部署的友方卡牌（不含国王自己）
+      const isAlly = c.owner === result.owner && c.name !== '国王';
+      if (isAlly) {
+        cell.addEventListener('click', () => kingDuelSelect(i));
+        cell.addEventListener('mouseenter', () => { cell.style.borderColor = '#d4aa44'; cell.style.transform = 'scale(1.05)'; });
+        cell.addEventListener('mouseleave', () => { cell.style.borderColor = '#2a3a5a'; cell.style.transform = 'scale(1)'; });
+      } else {
+        cell.style.opacity = '0.5';
+        cell.style.cursor = 'not-allowed';
+      }
+    } else {
+      cell.textContent = '·';
+    }
+    boardEl.appendChild(cell);
+  }
+
+  overlay.classList.add('show');
+  return true; // 表示弹窗已显示，需要等待用户选择
+}
+
+function kingDuelSelect(targetIdx) {
+  const overlay = document.getElementById('king-duel-overlay');
+  overlay.classList.remove('show');
+
+  if (!_kingDuelPending) return;
+  const { idx, owner } = _kingDuelPending;
+  _kingDuelPending = null;
+
+  const me = board[idx]; // 国王
+  const ally = board[targetIdx]; // 被选中的友方单位
+  if (!me || !ally) return;
+
+  const logs = [];
+
+  // 国王的"再次比较"：让友方单位与其相邻的敌方卡牌进行额外战斗判定
+  // 遍历友方单位的所有相邻格子
+  let hasBattle = false;
+  for (const { idx: nIdx, dir } of NEIGHBORS[targetIdx]) {
+    const enemy = board[nIdx];
+    if (enemy && enemy.owner !== ally.owner) {
+      // 友方单位从 dir 方向进攻敌方
+      const myDir = dir;
+      const enemyDir = oppositeDir(dir);
+      let myVal = getAtkVal(ally, myDir);
+      let enemyVal = getDefVal(enemy, enemyDir);
+
+      // 应用被动技能修正
+      const mySk = getSkill(ally);
+      if (mySk) {
+        if (mySk.calcGlobal) myVal = mySk.calcGlobal(myVal);
+        if (mySk.calcAtk) myVal = mySk.calcAtk(myVal, myDir);
+      }
+      const enemySk = getSkill(enemy);
+      if (enemySk) {
+        if (enemySk.calcDef) enemyVal = enemySk.calcDef(enemyVal);
+        if (enemySk.calcGlobal) enemyVal = enemySk.calcGlobal(enemyVal);
+      }
+
+      const tieWins = mySk && mySk.tieWins;
+      const win = (myVal > enemyVal) || (tieWins && myVal === enemyVal);
+
+      if (win) {
+        const wasFlipped = enemy.flipped;
+        enemy.flipped = false;
+        enemy.owner = ally.owner;
+        const actionText = wasFlipped ? '夺回' : '翻转';
+        logs.push(`<span style="color:#d4aa44">👑 [王之威仪] ${ally.name} 对 ${enemy.name} ${actionText}！(${myVal} vs ${enemyVal})</span>`);
+      } else {
+        logs.push(`<span style="color:#888">👑 [王之威仪] ${ally.name} 对 ${enemy.name} 比较失败 (${myVal} vs ${enemyVal})</span>`);
+      }
+      hasBattle = true;
+    }
+  }
+
+  if (!hasBattle) {
+    logs.push(`<span style="color:#888">👑 [王之威仪] ${ally.name} 周围没有敌方卡牌</span>`);
+  }
+
+  if (logs.length > 0) setBattleLog(logs.join('<br>'));
+
+  renderBoard(); calcScore(); updateInfo();
+
+  // 如果是AI回合，继续AI流程
+  if (owner === 'ai') {
+    finishAiTurn();
+  }
+}
+
+function kingDuelCancel() {
+  document.getElementById('king-duel-overlay').classList.remove('show');
+  if (_kingDuelPending) {
+    const { owner } = _kingDuelPending;
+    _kingDuelPending = null;
+    if (owner === 'ai') {
+      finishAiTurn();
+    }
+  }
+}
+
+// ========== 白兔逃跑 ==========
+function showRabbitEscapePicker(result) {
+  if (!result || !result.rabbitEscape || !_rabbitEscapePending) return false;
+  _rabbitEscapePlacerOwner = result.placerOwner;
+
+  const { rabbitIdx } = _rabbitEscapePending;
+  const overlay = document.getElementById('rabbit-escape-overlay');
+  const boardEl = document.getElementById('rabbit-escape-board');
+  boardEl.innerHTML = '';
+
+  // 可逃的空格（仅十字方向）
+  const escapeCells = new Set(
+    NEIGHBORS[rabbitIdx].filter(({ idx: eIdx }) => board[eIdx] === null).map(({ idx: eIdx }) => eIdx)
+  );
+
+  for (let i = 0; i < TOTAL; i++) {
+    const cell = document.createElement('div');
+    const c = board[i];
+    const isRabbit = i === rabbitIdx;
+    const isEscape = escapeCells.has(i);
+
+    cell.style.cssText = `
+      aspect-ratio:1; border-radius:6px;
+      display:flex; align-items:center; justify-content:center;
+      font-size:11px; text-align:center; padding:2px;
+      transition: all 0.15s;
+    `;
+
+    if (isRabbit) {
+      cell.style.background = '#1a3a1a';
+      cell.style.border = '2px solid #80e040';
+      cell.style.color = '#a0e080';
+      cell.textContent = '🐰';
+      cell.style.fontSize = '18px';
+    } else if (isEscape) {
+      cell.style.background = '#0d2a0d';
+      cell.style.border = '2px dashed #50c050';
+      cell.style.color = '#50c050';
+      cell.style.cursor = 'pointer';
+      cell.textContent = '→';
+      cell.addEventListener('click', () => rabbitEscapeSelect(i));
+      cell.addEventListener('mouseenter', () => {
+        cell.style.background = '#1a4a1a';
+        cell.style.borderColor = '#80e040';
+        cell.style.transform = 'scale(1.08)';
+      });
+      cell.addEventListener('mouseleave', () => {
+        cell.style.background = '#0d2a0d';
+        cell.style.borderColor = '#50c050';
+        cell.style.transform = 'scale(1)';
+      });
+    } else if (c) {
+      cell.style.background = c.owner === 'player' ? '#1a2a4a' : '#3a1a2a';
+      cell.style.border = '1.5px solid #2a3a5a';
+      cell.style.color = '#e0e6f0';
+      cell.textContent = c.name;
+      cell.style.opacity = '0.5';
+    } else {
+      cell.style.background = '#0a0e1a';
+      cell.style.border = '1px solid #1a2a3a';
+      cell.style.color = '#2a3a5a';
+      cell.textContent = '·';
+    }
+    boardEl.appendChild(cell);
+  }
+
+  overlay.classList.add('show');
+  return true;
+}
+
+function rabbitEscapeSelect(targetIdx) {
+  const overlay = document.getElementById('rabbit-escape-overlay');
+  overlay.classList.remove('show');
+
+  if (!_rabbitEscapePending) return;
+  const { rabbitIdx, attackerOwner } = _rabbitEscapePending;
+  const placerOwner = _rabbitEscapePlacerOwner;
+  _rabbitEscapePending = null;
+  _rabbitEscapePlacerOwner = null;
+
+  const rabbit = board[rabbitIdx];
+  if (!rabbit || board[targetIdx] !== null) return;
+
+  // 白兔移动到目标格
+  board[targetIdx] = { ...rabbit };
+  board[rabbitIdx] = null;
+
+  setBattleLog(`<span style="color:#a0e080">🐰 [逃跑] 白兔逃往了 ${POS_NAMES[targetIdx]}！</span>`);
+
+  // 渲染并继续后续流程
+  if (placerOwner === 'player') {
+    // 玩家放置后的白兔逃跑：抽牌→切换AI回合
+    if (playerDeck.length > 0 && hand.length < MAX_HAND_SIZE) {
+      const draw = drawFromDeck(playerDeck, 1);
+      hand.push(...draw.cards);
+      playerDeck = draw.deck;
+    }
+    renderBoard(); renderHand(); renderEnemyHand(); calcScore(); updateInfo();
+    if (board.every(c => c !== null)) { endGame(); return; }
+    isPlayerTurn = false;
+    updateInfo(); renderBoard(); renderEnemyHand();
+    if (isOnlineMode) {
+      if (window._lastPlaceIdx !== undefined && board[window._lastPlaceIdx]) {
+        sendPlaceCard(window._lastPlaceIdx, board[window._lastPlaceIdx]);
+      }
+    } else {
+      setTimeout(aiTurn, 800);
+    }
+  } else {
+    // AI放置后的白兔逃跑
+    finishAiTurn();
+  }
+}
+
+// AI 自动处理白兔逃跑
+function aiHandleRabbitEscape() {
+  if (!_rabbitEscapePending) return false;
+  const { rabbitIdx } = _rabbitEscapePending;
+  const escapeCells = NEIGHBORS[rabbitIdx]
+    .filter(({ idx: eIdx }) => board[eIdx] === null)
+    .map(({ idx: eIdx }) => eIdx);
+
+  if (escapeCells.length === 0) {
+    _rabbitEscapePending = null;
+    _rabbitEscapePlacerOwner = null;
+    return false;
+  }
+
+  // AI 随机选一个空格逃跑
+  const targetIdx = escapeCells[Math.floor(Math.random() * escapeCells.length)];
+  // 延迟一下让玩家看到日志
+  setTimeout(() => rabbitEscapeSelect(targetIdx), 500);
+  return true;
+}
+
+// ========== 旋转选择 ==========
+// 旋转变换：给定原始卡牌，顺时针旋转 N*90°
+// 同时旋转基础值(t/b/l/r)和攻防分离值(_atk/_def)
+function rotateCard(card, steps) {
+  let c = { ...card };
+  for (let s = 0; s < steps; s++) {
+    // 基础值旋转：l→t, t→r, r→b, b→l
+    [c.t, c.r, c.b, c.l] = [c.l, c.t, c.r, c.b];
+    // 攻击值旋转
+    [c.t_atk, c.r_atk, c.b_atk, c.l_atk] = [c.l_atk, c.t_atk, c.r_atk, c.b_atk];
+    // 防御值旋转
+    [c.t_def, c.r_def, c.b_def, c.l_def] = [c.l_def, c.t_def, c.r_def, c.b_def];
+    // 原始攻防字段也要旋转，否则 normalizeCard 会用原始值覆盖
+    [c.ta, c.ra, c.ba, c.la] = [c.la, c.ta, c.ra, c.ba];
+    [c.td, c.rd, c.bd, c.ld] = [c.ld, c.td, c.rd, c.bd];
+  }
+  return c;
+}
+
+let _rotPendingIdx = null;   // 等待确认的格子索引
+let _rotPendingCard = null;  // 等待确认的卡牌（原始）
+let _rotSteps = 0;           // 当前选中的旋转步数
+
+// 旋转方向标签
+const ROT_LABELS = ['↑ 正向 (0°)', '↷ 右转 (90°)', '↓ 倒置 (180°)', '↶ 左转 (270°)'];
+
+function showRotationPicker(idx, card) {
+  _rotPendingIdx = idx;
+  _rotPendingCard = card;
+  _rotSteps = 0;
+
+  const overlay = document.getElementById('rotation-overlay');
+
+  // 渲染预览卡牌
+  const previewEl = document.getElementById('rot-preview-card');
+  if (previewEl) {
+    previewEl.innerHTML = cardHtml(card, false);
+    previewEl.style.transform = 'rotate(0deg)';
+    previewEl.style.display = 'grid';
+    previewEl.style.gridTemplateAreas = '". top ." "left mid right" ". bot ."';
+    previewEl.style.gridTemplateColumns = '1fr auto 1fr';
+    previewEl.style.gridTemplateRows = 'auto 1fr auto';
+    previewEl.style.padding = '2px';
+    previewEl.style.width = '110px';
+    previewEl.style.height = '110px';
+  }
+  document.getElementById('rot-hint-text').textContent = ROT_LABELS[0];
+
+  overlay.classList.add('show');
+}
+
+// 点击箭头逐步旋转
+function rotStep(dir) {
+  if (!_rotPendingCard) return;
+  _rotSteps = ((_rotSteps + dir) % 4 + 4) % 4;
+
+  const rotated = rotateCard(_rotPendingCard, _rotSteps);
+  const previewEl = document.getElementById('rot-preview-card');
+  if (previewEl) {
+    previewEl.style.transform = `rotate(${_rotSteps * 90}deg)`;
+  }
+  document.getElementById('rot-hint-text').textContent = ROT_LABELS[_rotSteps];
+}
+
+function rotConfirm() {
+  const overlay = document.getElementById('rotation-overlay');
+  overlay.classList.remove('show');
+  if (_rotPendingIdx === null || _rotPendingCard === null) return;
+
+  const rotatedCard = rotateCard(_rotPendingCard, _rotSteps);
+  const idx = _rotPendingIdx;
+  const handIdx = selectedCard;
+  const cost = _rotPendingCard.cost || 0;
+
+  // 扣除费用
+  currentMana -= cost;
+
+  // 骑士技能需要进一步处理
+  if (_rotPendingCard.skill === 'knight_assign') {
+    // 将旋转后的卡牌传给骑士弹窗（此处直接用旋转后数值做骑士弹窗，
+    // 实际上骑士是自由分配，旋转对骑士意义不大，直接走骑士弹窗）
+    // 重置费用并回归骑士流程（骑士弹窗内部再扣费）
+    currentMana += cost; // 先加回
+    _rotPendingIdx = null; _rotPendingCard = null;
+    showKnightAssign(idx);
+    return;
+  }
+
+  placeCard(idx, rotatedCard, 'player');
+  hand.splice(handIdx, 1);
+  selectedCard = null;
+  _rotPendingIdx = null;
+  _rotPendingCard = null;
+  window._lastPlaceIdx = idx; // 记录放置位置，供白兔逃跑回调使用
+
+  const combatResult = resolveCombat(idx, 'player');
+
+  // ===== 法术牌：使用后消失，不占棋盘格 =====
+  if (combatResult && combatResult.spellUsed) {
+    // 法术牌已在 resolveCombat 中移除（board[idx]=null），直接进入下一阶段
+    if (playerDeck.length > 0 && hand.length < MAX_HAND_SIZE) {
+      const draw = drawFromDeck(playerDeck, 1);
+      hand.push(...draw.cards);
+      playerDeck = draw.deck;
+    }
+    renderBoard(); renderHand(); renderEnemyHand(); updateInfo();
+    if (board.every(c => c !== null)) { endGame(); return; }
+    isPlayerTurn = false;
+    updateInfo(); renderBoard(); renderEnemyHand();
+    if (!isOnlineMode) setTimeout(aiTurn, 800);
+    return;
+  }
+
+  // 国王技能：显示再次比较弹窗
+  if (combatResult && combatResult.kingDuel) {
+    const showing = showKingDuelPicker(combatResult);
+    if (showing) {
+      // 弹窗显示中，等待用户选择后再继续
+      // 先渲染棋盘显示放置结果
+      renderBoard(); renderHand(); renderEnemyHand(); calcScore(); updateInfo();
+      return;
+    }
+  }
+
+  // 白兔逃跑：显示逃跑方向弹窗（玩家选择）
+  if (combatResult && combatResult.rabbitEscape) {
+    renderBoard(); renderHand(); renderEnemyHand(); calcScore(); updateInfo();
+    const showing = showRabbitEscapePicker(combatResult);
+    if (showing) return; // 等待用户选择逃跑方向
+  }
+
+  if (playerDeck.length > 0 && hand.length < MAX_HAND_SIZE) {
+    const draw = drawFromDeck(playerDeck, 1);
+    hand.push(...draw.cards);
+    playerDeck = draw.deck;
+  }
+
+  renderBoard(); renderHand(); renderEnemyHand(); calcScore(); updateInfo();
+
+  if (board.every(c => c !== null)) { endGame(); return; }
+
+  isPlayerTurn = false;
+  updateInfo(); renderBoard(); renderEnemyHand();
+
+  if (isOnlineMode) {
+    const placedCard = board[idx];
+    sendPlaceCard(idx, placedCard);
+  } else {
+    setTimeout(aiTurn, 800);
+  }
+}
+
+function rotCancel() {
+  document.getElementById('rotation-overlay').classList.remove('show');
+  _rotPendingIdx = null;
+  _rotPendingCard = null;
+}
+
+// ========== 道具牌确认弹窗（法术牌）==========
+let _spellPendingIdx = null;
+let _spellPendingCard = null;
+
+function showSpellConfirm(handIdx, card) {
+  _spellPendingIdx = handIdx;
+  _spellPendingCard = card;
+
+  const sk = getSkill(card);
+  const icon = sk ? sk.icon : '🎴';
+
+  document.getElementById('spell-card-icon-preview').textContent = icon;
+  document.getElementById('spell-card-name').textContent = card.name;
+  // 动态描述：优先用技能名，写死赌运描述
+  const descMap = {
+    '赌运': '50% 积分+2 · 50% 从牌堆抽1张牌'
+  };
+  const desc = sk ? (descMap[sk.name] || sk.name) : '使用后消耗';
+  document.getElementById('spell-card-desc').textContent = desc;
+  document.getElementById('spell-cost-val').textContent = card.cost || 0;
+
+  document.getElementById('spell-overlay').classList.add('show');
+}
+
+function spellConfirm() {
+  document.getElementById('spell-overlay').classList.remove('show');
+  if (_spellPendingIdx === null || _spellPendingCard === null) return;
+
+  const handIdx = _spellPendingIdx;
+  const card = _spellPendingCard;
+  _spellPendingIdx = null;
+  _spellPendingCard = null;
+
+  useSpellCard(handIdx, card);
+}
+
+function spellCancel() {
+  document.getElementById('spell-overlay').classList.remove('show');
+  _spellPendingIdx = null;
+  _spellPendingCard = null;
+}
+
+// ========== 道具牌直接使用（法术牌）==========
+function useSpellCard(handIdx, card) {
+  if (gameOver) return;
+  if (!isPlayerTurn) { setBattleLog('还没到你的回合！'); return; }
+
+  const cost = card.cost || 0;
+  if (cost > currentMana) {
+    setBattleLog(`⚠️ 费用不足！需要 ${cost} 点，当前仅 ${currentMana} 点`);
+    return;
+  }
+
+  // 扣除费用
+  currentMana -= cost;
+
+  // 从手牌移除
+  hand.splice(handIdx, 1);
+  selectedCard = null;
+
+  // 触发技能效果
+  const mySk = getSkill(card);
+  const logs = [];
+  if (mySk && mySk.name === '赌运') {
+    const _rand = Math.random();
+    if (_rand < 0.5) {
+      _playerSpellBonus += 2;
+      logs.push(`<span style="color:#f0c040">🪙 [赌运] 幸运降临！积分+2！</span>`);
+    } else {
+      if (playerDeck.length > 0) {
+        const drawn = drawFromDeck(playerDeck, 1);
+        drawn.cards.forEach(c => { if (hand.length < MAX_HAND_SIZE) hand.push(c); });
+        playerDeck = drawn.deck;
+        logs.push(`<span style="color:#f0c040">🪙 [赌运] 神秘召唤！从牌堆抽到了1张牌！</span>`);
+      } else {
+        logs.push(`<span style="color:#888">🪙 [赌运] 牌堆已空，无事发生。</span>`);
+      }
+    }
+  }
+
+  if (logs.length > 0) setBattleLog(logs.join('<br>'));
+
+  calcScore();
+  renderBoard(); renderHand(); renderEnemyHand(); updateInfo();
+
+  if (board.every(c => c !== null)) { endGame(); return; }
+
+  isPlayerTurn = false;
+  updateInfo(); renderBoard(); renderEnemyHand();
+
+  if (isOnlineMode) {
+    sendSpellCard(card);
+  } else {
+    setTimeout(aiTurn, 800);
+  }
+}
+
+// ========== 玩家操作 ==========
+function onCellClick(idx) {
+  if (gameOver) return;
+  if (board[idx]) { setBattleLog('该位置已有卡牌！'); return; }
+  if (!isPlayerTurn) { setBattleLog('还没到你的回合！'); return; }
+  if (selectedCard === null || hand.length === 0) {
+    setBattleLog('请先从手牌中选择一张卡牌！');
+    renderBoard();
+    return;
+  }
+
+  const card = hand[selectedCard];
+
+  // ===== 费用检查 =====
+  const cost = card.cost || 0;
+  if (cost > currentMana) {
+    setBattleLog(`⚠️ 费用不足！需要 ${cost} 点，当前仅 ${currentMana} 点`);
+    return;
+  }
+
+  // ===== 弹出旋转方向选择（骑士技能也通过旋转弹窗进入，由 rotConfirm 转交）=====
+  showRotationPicker(idx, card);
+}
+
+function placeCard(idx, card, owner) {
+  board[idx] = normalizeCard({
+    owner,
+    deckIdx: card.deckIdx,
+    name: card.name, skill: card.skill, race: card.race,
+    t: card.t, b: card.b, l: card.l, r: card.r,
+    cost: card.cost,
+    // 保留攻防分离原始字段（若有）
+    ta: card.ta, ba: card.ba, la: card.la, ra: card.ra,
+    td: card.td, bd: card.bd, ld: card.ld, rd: card.rd,
+    // 保留已规范化的 _atk/_def 字段（若有）
+    t_atk: card.t_atk, b_atk: card.b_atk, l_atk: card.l_atk, r_atk: card.r_atk,
+    t_def: card.t_def, b_def: card.b_def, l_def: card.l_def, r_def: card.r_def,
+    flipped: false, locked: false, boosted: false,
+    // 盗贼记录放置回合（本质小偷只能在放置后的第一回合触发）
+    _thiefPlacedRound: (card.skill === 'thief_steal') ? round : undefined
+  });
+}
+
+// ========== AI 回合 ==========
+function aiTurn() {
+  if (gameOver) return;
+
+  // AI 回合开始：费用 = 回合数（每回合刷新），应用盗贼技能修正
+  const aiMana = Math.max(0, round + _aiNextManaDelta);
+  _aiNextManaDelta = 0; // 清零修正
+
+  // AI 抽1张牌（如果牌堆有牌且手牌未满）
+  let aiHand = [];
+  if (aiDeck.length > 0) {
+    const draw = drawFromDeck(aiDeck, 1);
+    // 这里需要维护 AI 手牌，但当前没有全局 aiHand 变量
+    // 为简化，AI 每回合从牌堆抽1张 + 保留上回合未出的牌
+    // 先读取上回合的 aiHandState（如果有）
+    aiHand = window._aiHandState || [];
+    aiHand.push(...draw.cards);
+    aiDeck = draw.deck;
+  } else {
+    aiHand = window._aiHandState || [];
+  }
+  // 限制手牌上限
+  if (aiHand.length > MAX_HAND_SIZE) aiHand = aiHand.slice(0, MAX_HAND_SIZE);
+
+  const empties = board.map((c,i) => c === null ? i : -1).filter(i => i >= 0);
+  if (empties.length === 0) { endGame(); return; }
+
+  // AI策略：评估 每张牌 × 每个位置 的综合得分（只考虑费用足够的牌）
+  let bestCombo = null, bestScore = -Infinity;
+
+  for (const card of aiHand) {
+    // AI 费用检查：跳过负担不起的卡
+    const cost = card.cost || 0;
+    if (cost > aiMana) continue;
+
+    // 骑士技能：AI 枚举所有方向排列，选最优
+    const cardVariants = [];
+    if (card.skill === 'knight_assign') {
+      // 全排列 [4,4,5,6] 到 [t,b,l,r]（去重）
+      const pool = [4,4,5,6];
+      const seen = new Set();
+      const dirs = ['t','b','l','r'];
+      const permute = (arr, perm) => {
+        if (perm.length === 4) {
+          const key = perm.join(',');
+          if (!seen.has(key)) {
+            seen.add(key);
+            const v = Object.assign({}, card);
+            dirs.forEach((d,i) => v[d] = perm[i]);
+            cardVariants.push(v);
+          }
+          return;
+        }
+        arr.forEach((val, i) => {
+          const rest = arr.slice(); rest.splice(i, 1);
+          permute(rest, perm.concat(val));
+        });
+      };
+      permute(pool, []);
+    } else {
+      cardVariants.push(card);
+    }
+
+    for (const cVar of cardVariants) {
+    for (const idx of empties) {
+      let score = 0;
+      const sk = getSkill(cVar);
+
+      // 基础：相邻敌方对抗评估
+      for (const { idx: nIdx, dir } of NEIGHBORS[idx]) {
+        const enemy = board[nIdx];
+        if (enemy && enemy.owner === 'player') {
+          // AI 进攻用攻击值，防御方用防御值
+          let myV = getAtkVal(cVar, dir);
+          let enV = getDefVal(enemy, oppositeDir(dir));
+
+          // 模拟被动技能加成
+          if (sk) {
+            if (sk.calcGlobal) { myV = sk.calcGlobal(myV); enV = sk.calcGlobal(enV); }
+            if (sk.calcAtk) myV = sk.calcAtk(myV, dir);
+          }
+          const enemySk = getSkill(enemy);
+          if (enemySk) {
+            if (enemySk.calcDef) enV = enemySk.calcDef(enV);
+            if (enemySk.calcGlobal) enV = enemySk.calcGlobal(enV);
+          }
+
+          const tieWin = sk && sk.tieWins;
+          if (myV > enV || (tieWin && myV === enV)) score += (enemy.flipped ? 3 : 4);
+          else if (myV < enV) score -= 1;
+          else score += 0.5;
+        }
+      }
+
+      // 技能价值加权
+      if (sk) {
+        switch(sk.name) {
+          case '连锁闪电': case '烈焰爆发': score += 1.5; break;
+          case '吸收': case '共振': score += 1.2; break;
+          case '冰封': score += 1.3; break;
+          case '自由分配': score += 1.0; break;
+          case '灼烧': score += 1.4; break;
+          case '霜冻': score += 1.2; break;
+          case '龙息': score += 1.6; break;
+          case '坚壁': score += 1.1; break;
+          case '治愈': score += 0.9; break;
+          case '护卫': score += 1.0; break;
+          case '赌运': score += 0.8; break;
+          case '先手': score += 1.2; break;
+          case '王之威仪':
+            // 国王：光环效果价值取决于场上人类卡牌数量
+            const humanCount = board.filter(c => c && c.owner === 'ai' && c.race === '人类').length;
+            score += 1.5 + humanCount * 0.8;
+            break;
+          default: score += 0.5;
+        }
+      }
+
+      // 位置中心度加分（边缘弱于中间）
+      const row = Math.floor(idx / COLS), col = idx % COLS;
+      if (row >= 1 && row <= 1 && col >= 1 && col <= 2) score += 0.8;
+
+      score += Math.random() * 0.8;
+      if (score > bestScore) { bestScore = score; bestCombo = { card: cVar, idx }; }
+    }
+    } // end cardVariants loop
+  }
+
+  if (!bestCombo) {
+    // AI 所有牌费用都不够，跳过回合但保存手牌
+    setBattleLog('🤖 AI 费用不足，跳过回合');
+
+    // ===== 盗贼"本质小偷"：AI 跳过回合，检测玩家方场上是否有未翻面、未使用过、且是放置后第一回合的盗贼 =====
+    const playerThief = board.find(c => c && c.owner === 'player' && !c.flipped && c.skill === 'thief_steal' && !c._thiefUsed && c._thiefPlacedRound === round);
+    if (playerThief) {
+      playerThief._thiefUsed = true; // 标记该盗贼技能已使用
+      _aiNextManaDelta     -= 2; // AI 下回合费用-2
+      _playerNextManaDelta += 2; // 玩家下回合费用+2
+      setBattleLog('🤖 AI 费用不足，跳过回合<br><span style="color:#7eb8fe">🗡️ [本质小偷] 你的盗贼嗅到机会！AI下回合费用-2，你下回合费用+2！</span>');
+    }
+
+    window._aiHandState = aiHand;
+    round++;
+    maxMana = Math.min(round, MAX_ROUNDS);
+    // 应用玩家下回合费用修正
+    currentMana = Math.max(0, maxMana + _playerNextManaDelta);
+    _playerNextManaDelta = 0;
+    isPlayerTurn = true;
+    renderBoard(); renderHand(); renderEnemyHand(); calcScore(); updateInfo();
+    if (board.every(c => c !== null) || round > MAX_ROUNDS) { endGame(); return; }
+    return;
+  }
+
+  // ===== 法术牌：AI直接使用，不占格子 =====
+  if (bestCombo.card.race === '道具') {
+    // 从 AI 手牌中移除
+    const playedIdx = aiHand.findIndex(c => c.deckIdx === bestCombo.card.deckIdx);
+    if (playedIdx >= 0) aiHand.splice(playedIdx, 1);
+    window._aiHandState = aiHand;
+
+    // 触发赌运效果
+    const logs = [];
+    const _rand = Math.random();
+    if (_rand < 0.5) {
+      _aiSpellBonus += 2;
+      logs.push(`<span style="color:#f0c040">🪙 [赌运] AI运气不错！AI积分+2！</span>`);
+    } else {
+      if (aiDeck.length > 0) {
+        const drawn = drawFromDeck(aiDeck, 1);
+        drawn.cards.forEach(c => { if (aiHand.length < MAX_HAND_SIZE) aiHand.push(c); });
+        aiDeck = drawn.deck;
+        window._aiHandState = aiHand;
+        logs.push(`<span style="color:#f0c040">🪙 [赌运] AI抽到了1张牌！</span>`);
+      }
+    }
+    if (logs.length > 0) setBattleLog(logs.join('<br>'));
+    calcScore();
+    renderBoard(); renderEnemyHand(); updateInfo();
+    finishAiTurn();
+    return;
+  }
+
+  placeCard(bestCombo.idx, bestCombo.card, 'ai');
+
+  // 从 AI 手牌中移除已出的牌
+  const playedIdx = aiHand.findIndex(c => c.deckIdx === bestCombo.card.deckIdx);
+  if (playedIdx >= 0) aiHand.splice(playedIdx, 1);
+  // 保存剩余手牌到下一回合
+  window._aiHandState = aiHand;
+
+  const combatResult = resolveCombat(bestCombo.idx, 'ai');
+
+  // ===== 法术牌：AI使用后消失，直接进入回合结算 =====
+  if (combatResult && combatResult.spellUsed) {
+    renderBoard(); renderEnemyHand(); updateInfo();
+    finishAiTurn();
+    return;
+  }
+
+  // 国王技能：AI自动选择再次比较的目标
+  if (combatResult && combatResult.kingDuel) {
+    // AI选择最优目标：优先选择能翻转的敌方卡牌
+    let bestTarget = null, bestTargetScore = -Infinity;
+    for (let i = 0; i < TOTAL; i++) {
+      const target = board[i];
+      if (!target || target.owner === 'ai') continue;
+
+      // 评估这个目标的价值
+      let score = 0;
+      // 相邻优先
+      const isAdjacent = NEIGHBORS[bestCombo.idx].some(n => n.idx === i);
+      if (isAdjacent) score += 3;
+
+      // 未翻转的敌方牌更有价值
+      if (!target.flipped) score += 2;
+      else score += 1;
+
+      // 低防御的更容易翻转
+      const avgDef = (getDefVal(target,'t') + getDefVal(target,'b') + getDefVal(target,'l') + getDefVal(target,'r')) / 4;
+      score += (9 - avgDef) * 0.5;
+
+      if (score > bestTargetScore) {
+        bestTargetScore = score;
+        bestTarget = i;
+      }
+    }
+
+    if (bestTarget !== null) {
+      // 延迟一点显示AI的选择
+      setTimeout(() => {
+        kingDuelSelect(bestTarget);
+      }, 600);
+      return; // 等待kingDuelSelect中的finishAiTurn继续
+    }
+  }
+
+  // 白兔逃跑：AI回合中触发的是AI攻击玩家白兔，由玩家选择逃跑方向
+  if (combatResult && combatResult.rabbitEscape) {
+    renderBoard(); renderEnemyHand(); calcScore(); updateInfo();
+    _rabbitEscapePlacerOwner = 'ai';
+    // 显示逃跑弹窗让玩家选择方向（而非AI自动处理）
+    if (showRabbitEscapePicker(combatResult)) return;
+    // 如果弹窗未显示（无空格可逃等），继续finishAiTurn
+  }
+
+  finishAiTurn();
+}
+
+function finishAiTurn() {
+  round++;
+
+  // ===== 新回合开始：处理持续效果 =====
+  const dotLogs = [];
+  board.forEach(c => {
+    if (!c) return;
+    // 灼烧DoT：减少该牌最高方向数值1点，模拟持续伤害
+    if (c._burningTurns && c._burningTurns > 0) {
+      const maxDir = ['t','b','l','r'].reduce((a,b) => (c[a]||0) > (c[b]||0) ? a : b);
+      if (c[maxDir] > 1) c[maxDir] = Math.max(1, c[maxDir] - (c._burningDmg || 1));
+      c._burningTurns--;
+      dotLogs.push(`<span style="color:#e06040">🔥 [灼烧持续] ${c.name} 受到灼烧伤害！剩余${c._burningTurns}回合</span>`);
+    }
+  });
+
+  // 治愈光环：每回合为己方加分（50%概率触发，避免过强）
+  let healPlayer = 0, healAi = 0;
+  board.forEach(c => {
+    if (!c || c.flipped) return;
+    const sk = getSkill(c);
+    if (sk && sk.name === '治愈') {
+      if (Math.random() < 0.5) {
+        if (c.owner === 'player') healPlayer++;
+        else healAi++;
+      }
+    }
+  });
+  if (dotLogs.length > 0 || healPlayer > 0 || healAi > 0) {
+    const healMsgs = [];
+    if (healPlayer > 0) healMsgs.push(`<span style="color:#50b060">🌿 [治愈] 你额外获得 ${healPlayer} 分！</span>`);
+    if (healAi > 0)     healMsgs.push(`<span style="color:#e06040">🌿 [治愈] AI额外获得 ${healAi} 分！</span>`);
+    setBattleLog([...dotLogs, ...healMsgs].join('<br>'));
+  }
+
+  // 新回合：玩家费用刷新为当前回合数（不累积），上限为 MAX_ROUNDS
+  maxMana = Math.min(round, MAX_ROUNDS);
+  // 应用盗贼技能对玩家费用的修正
+  currentMana = Math.max(0, maxMana + _playerNextManaDelta);
+  if (_playerNextManaDelta !== 0) {
+    // 费用修正提示已在跳过时给出，这里仅重置
+    _playerNextManaDelta = 0;
+  }
+  isPlayerTurn = true;
+
+  renderBoard(); renderHand(); renderEnemyHand(); calcScore(); updateInfo();
+
+  if (board.every(c => c !== null) || round > MAX_ROUNDS) { endGame(); return; }
+}
+
+// ========== 计分 ==========
+// 现在 flipped 的牌也算分（按当前 owner 归属）
+let _playerSpellBonus = 0; // 法术牌一次性额外加分（不被 calcScore 清零）
+let _aiSpellBonus = 0;
+function calcScore() {
+  const _prevPlayerScore = playerScore;
+  const _prevAiScore = aiScore;
+  playerScore = 0; aiScore = 0;
+  board.forEach(c => {
+    if (!c) return;
+    if (c.owner === 'player') playerScore++; else aiScore++;
+  });
+  // 治愈光环：每回合重新统计（持有治愈牌每回合都加分）
+  let healPlayer = 0, healAi = 0;
+  board.forEach(c => {
+    if (!c) return;
+    const sk = getSkill(c);
+    if (sk && sk.name === '治愈') {
+      if (c.owner === 'player') healPlayer++; else healAi++;
+    }
+  });
+  playerScore += _playerSpellBonus + healPlayer;
+  aiScore += _aiSpellBonus + healAi;
+
+  // 分数变化动画
+  const pEl = document.getElementById('p-score');
+  const aEl = document.getElementById('ai-score');
+  if (pEl) {
+    pEl.classList.remove('score-pop-up', 'score-buff', 'score-nerf');
+    pEl.offsetHeight;
+    pEl.classList.add('score-pop-up');
+    if (playerScore > _prevPlayerScore) pEl.classList.add('score-buff');
+    else if (playerScore < _prevPlayerScore) pEl.classList.add('score-nerf');
+    setTimeout(() => pEl.classList.remove('score-pop-up', 'score-buff', 'score-nerf'), 500);
+  }
+  if (aEl) {
+    aEl.classList.remove('score-pop-up', 'score-buff', 'score-nerf');
+    aEl.offsetHeight;
+    aEl.classList.add('score-pop-up');
+    if (aiScore > _prevAiScore) aEl.classList.add('score-buff');
+    else if (aiScore < _prevAiScore) aEl.classList.add('score-nerf');
+    setTimeout(() => aEl.classList.remove('score-pop-up', 'score-buff', 'score-nerf'), 500);
+  }
+}
+
+function endGame() {
+  gameOver = true; calcScore();
+  const roundInfo = round > MAX_ROUNDS ? `（第 ${MAX_ROUNDS} 回合结束）` : `（第 ${round} 回合）`;
+  let msg = playerScore > aiScore ? '🎉 你赢了！' : (aiScore > playerScore ? '😤 AI赢了！' : '🤝 平局！');
+  setTimeout(() => alert(`游戏结束 ${roundInfo}\n你的格子：${playerScore}  AI格子：${aiScore}\n${msg}`), 300);
+  updateInfo();
+  // 游戏结束后显示返回主界面按钮
+  const menuBtn = document.getElementById('menu-btn');
+  if (menuBtn) menuBtn.style.display = 'inline-block';
+}
+
+function resetGame() {
+  window._aiHandState = [];
+  init();
+  // 重新开始后隐藏返回主界面按钮
+  const menuBtn = document.getElementById('menu-btn');
+  if (menuBtn) menuBtn.style.display = 'none';
+}
+
+// ========== 跳过回合 ==========
+function skipTurn() {
+  if (gameOver || !isPlayerTurn) return;
+  // 取消已选手牌
+  selectedCard = null;
+
+  setBattleLog('⏭ 你选择了跳过本回合');
+
+  // ===== 盗贼"本质小偷"：玩家跳过回合，检测 AI 方场上是否有未翻面、未使用过、且是放置后第一回合的盗贼 =====
+  const aiThief = board.find(c => c && c.owner === 'ai' && !c.flipped && c.skill === 'thief_steal' && !c._thiefUsed && c._thiefPlacedRound === round);
+  if (aiThief) {
+    aiThief._thiefUsed = true; // 标记该盗贼技能已使用
+    _playerNextManaDelta -= 2; // 玩家下回合费用-2
+    _aiNextManaDelta    += 2; // AI 下回合费用+2（体现在 finishAiTurn 刷新前）
+    setBattleLog('⏭ 你选择了跳过本回合<br><span style="color:#e08040">🗡️ [本质小偷] 敌方盗贼发现机会！你下回合费用-2，AI下回合费用+2！</span>');
+  }
+
+  // 跳过回合也抽1张牌（如果牌堆有牌且手牌未满）
+  if (playerDeck.length > 0 && hand.length < MAX_HAND_SIZE) {
+    const draw = drawFromDeck(playerDeck, 1);
+    hand.push(...draw.cards);
+    playerDeck = draw.deck;
+    renderHand();
+  }
+
+  isPlayerTurn = false;
+  updateInfo();
+  renderBoard(); renderHand(); renderEnemyHand();
+
+  if (isOnlineMode) {
+    sendSkipTurn();
+  } else {
+    setTimeout(aiTurn, 600);
+  }
+}
+
+// ========== 骑士：自由分配点数弹窗 ==========
+// 等待分配时暂存的目标格子
+let _kaCellIdx = null;
+// 当前分配状态: { t, b, l, r } 各方向的值（null 表示未分配）
+let _kaAssign = { t: null, b: null, l: null, r: null };
+// 点数池（可能有重复）
+const KA_POOL = [4, 4, 5, 6];
+// 哪个点数筹码已被使用（按索引）
+let _kaUsed = [false, false, false, false];
+// 当前拖动的筹码索引
+let _kaDragChipIdx = null;
+
+function showKnightAssign(cellIdx) {
+  _kaCellIdx = cellIdx;
+  _kaAssign = { t: null, b: null, l: null, r: null };
+  _kaUsed = [false, false, false, false];
+  _kaDragChipIdx = null;
+
+  // 渲染筹码
+  const chipsEl = document.getElementById('ka-chips');
+  chipsEl.innerHTML = '';
+  KA_POOL.forEach((val, i) => {
+    const chip = document.createElement('div');
+    chip.className = 'ka-chip';
+    chip.textContent = val;
+    chip.id = `ka-chip-${i}`;
+    chip.draggable = true;
+    chip.addEventListener('dragstart', () => {
+      _kaDragChipIdx = i;
+      chip.classList.add('dragging');
+    });
+    chip.addEventListener('dragend', () => chip.classList.remove('dragging'));
+    // 点击筹码 → 自动填入第一个空槽
+    chip.addEventListener('click', () => kaChipClick(i));
+    chipsEl.appendChild(chip);
+  });
+
+  // 重置槽位
+  ['t', 'b', 'l', 'r'].forEach(dir => {
+    const slot = document.getElementById(`ka-slot-${dir}`);
+    const val  = document.getElementById(`ka-val-${dir}`);
+    slot.classList.remove('filled');
+    val.textContent = '?';
+    val.className = 'ka-slot-val empty';
+    // 点击已填槽位 → 退回筹码
+    slot.onclick = () => kaSlotClick(dir);
+  });
+
+  document.getElementById('ka-confirm-btn').disabled = true;
+  document.getElementById('ka-confirm-btn').style.opacity = '0.4';
+  document.getElementById('ka-hint').textContent = '拖动上方点数到对应方向，也可点击选择';
+
+  const overlay = document.getElementById('knight-assign-overlay');
+  overlay.classList.add('show');
+}
+
+function kaUpdateConfirmBtn() {
+  const allFilled = Object.values(_kaAssign).every(v => v !== null);
+  const btn = document.getElementById('ka-confirm-btn');
+  btn.disabled = !allFilled;
+  btn.style.opacity = allFilled ? '1' : '0.4';
+}
+
+function kaChipClick(chipIdx) {
+  if (_kaUsed[chipIdx]) return;
+  // 找第一个空方向
+  const dirs = ['t', 'b', 'l', 'r'];
+  const emptyDir = dirs.find(d => _kaAssign[d] === null);
+  if (!emptyDir) return;
+  kaAssignDir(emptyDir, chipIdx);
+}
+
+function kaSlotClick(dir) {
+  // 如果已填，退回筹码
+  if (_kaAssign[dir] !== null) {
+    // 找哪个筹码填了这个槽
+    const chipIdx = KA_POOL.findIndex((v, i) => _kaUsed[i] && !_kaAssign[dir] === false && KA_POOL[i] === _kaAssign[dir] && _kaUsed[i]);
+    // 用简单方式：找第一个已用的且值匹配的筹码
+    let found = -1;
+    for (let i = 0; i < KA_POOL.length; i++) {
+      if (_kaUsed[i] && KA_POOL[i] === _kaAssign[dir]) { found = i; break; }
+    }
+    if (found >= 0) {
+      _kaUsed[found] = false;
+      document.getElementById(`ka-chip-${found}`).classList.remove('used');
+    }
+    _kaAssign[dir] = null;
+    const slot = document.getElementById(`ka-slot-${dir}`);
+    const val  = document.getElementById(`ka-val-${dir}`);
+    slot.classList.remove('filled');
+    val.textContent = '?';
+    val.className = 'ka-slot-val empty';
+    kaUpdateConfirmBtn();
+  }
+}
+
+function kaAssignDir(dir, chipIdx) {
+  if (_kaUsed[chipIdx]) return;
+  _kaUsed[chipIdx] = true;
+  _kaAssign[dir] = KA_POOL[chipIdx];
+
+  document.getElementById(`ka-chip-${chipIdx}`).classList.add('used');
+  const slot = document.getElementById(`ka-slot-${dir}`);
+  const val  = document.getElementById(`ka-val-${dir}`);
+  slot.classList.add('filled');
+  val.textContent = KA_POOL[chipIdx];
+  val.className = 'ka-slot-val';
+
+  kaUpdateConfirmBtn();
+}
+
+function kaDragOver(event) {
+  event.preventDefault();
+  const slot = event.currentTarget.closest ? event.currentTarget.closest('.ka-slot') : event.currentTarget;
+  if (slot) slot.classList.add('drag-over');
+}
+
+function kaDrop(event, dir) {
+  event.preventDefault();
+  const slot = event.currentTarget.closest ? event.currentTarget.closest('.ka-slot') : event.currentTarget;
+  if (slot) slot.classList.remove('drag-over');
+  if (_kaDragChipIdx === null || _kaUsed[_kaDragChipIdx]) return;
+  // 如果该槽已有值，先退回
+  if (_kaAssign[dir] !== null) kaSlotClick(dir);
+  kaAssignDir(dir, _kaDragChipIdx);
+  _kaDragChipIdx = null;
+}
+
+function kaConfirm() {
+  const a = _kaAssign;
+  if (a.t === null || a.b === null || a.l === null || a.r === null) return;
+
+  // 关闭弹窗
+  document.getElementById('knight-assign-overlay').classList.remove('show');
+
+  // 找当前选中的手牌（骑士）并更新其数值
+  const card = hand[selectedCard];
+  card.t = a.t; card.b = a.b; card.l = a.l; card.r = a.r;
+
+  // 正式落子（复用 onCellClick 的后续逻辑，但跳过技能触发前的检查）
+  const idx = _kaCellIdx;
+  const cost = card.cost || 0;
+  currentMana -= cost;
+
+  placeCard(idx, card, 'player');
+  hand.splice(selectedCard, 1);
+  selectedCard = null;
+
+  resolveCombat(idx, 'player');
+
+  // 玩家出牌后抽1张（如果牌堆有牌且手牌未满）
+  if (playerDeck.length > 0 && hand.length < MAX_HAND_SIZE) {
+    const draw = drawFromDeck(playerDeck, 1);
+    hand.push(...draw.cards);
+    playerDeck = draw.deck;
+  }
+
+  renderBoard(); renderHand(); renderEnemyHand(); calcScore(); updateInfo();
+
+  setBattleLog(`⚔️ 骑士落子！分配：上${a.t} 下${a.b} 左${a.l} 右${a.r}`);
+
+  if (board.every(c => c !== null)) { endGame(); return; }
+
+  isPlayerTurn = false;
+  updateInfo();
+  renderBoard(); renderEnemyHand();
+
+  if (isOnlineMode) {
+    const placedCard = board[idx];
+    sendPlaceCard(idx, placedCard);
+  } else {
+    setTimeout(aiTurn, 800);
+  }
+}
+
+function kaCancel() {
+  document.getElementById('knight-assign-overlay').classList.remove('show');
+  _kaCellIdx = null;
+  setBattleLog('已取消放置骑士');
+}
+
+// ========== 视图切换 ==========
+const menuEl = document.getElementById('main-menu');
+const gameEl = document.getElementById('game-view');
+const deckEl = document.getElementById('deck-view');
+
+function showView(view) {
+  const onlineMenu = document.getElementById('online-menu');
+  const waitingRoom = document.getElementById('waiting-room');
+  const joinRoomView = document.getElementById('join-room-view');
+
+  // 先隐藏所有视图（同时强制设置 display:none 确保生效）
+  menuEl.classList.add('hidden');
+  menuEl.style.display = 'none';
+  gameEl.classList.add('hidden');
+  gameEl.style.display = 'none';
+  deckEl.classList.add('hidden');
+  deckEl.style.display = 'none';
+  if (onlineMenu) {
+    onlineMenu.classList.add('hidden');
+    onlineMenu.style.display = 'none';
+  }
+  if (waitingRoom) {
+    waitingRoom.classList.add('hidden');
+    waitingRoom.style.display = 'none';
+  }
+  if (joinRoomView) {
+    joinRoomView.classList.add('hidden');
+    joinRoomView.style.display = 'none';
+  }
+
+  // 再显示目标视图
+  if (view === 'menu') {
+    menuEl.classList.remove('hidden');
+    menuEl.style.display = '';
+  }
+  else if (view === 'game') {
+    gameEl.classList.remove('hidden');
+    gameEl.style.display = '';
+  }
+  else if (view === 'deck') {
+    deckEl.classList.remove('hidden');
+    deckEl.style.display = '';
+  }
+  else if (view === 'online' && onlineMenu) {
+    onlineMenu.classList.remove('hidden');
+    onlineMenu.style.display = '';
+  }
+  else if (view === 'waiting' && waitingRoom) {
+    waitingRoom.classList.remove('hidden');
+    waitingRoom.style.display = '';
+  }
+  else if (view === 'join-room' && joinRoomView) {
+    joinRoomView.classList.remove('hidden');
+    joinRoomView.style.display = '';
+  }
+}
+
+function startGame() {
+  isOnlineMode = false;
+  showView('game');
+  window._aiHandState = [];
+  // 重置标签
+  document.getElementById('p-label').textContent = '玩家';
+  document.getElementById('o-label').textContent = 'AI';
+  document.getElementById('online-tag').style.display = 'none';
+  init();
+}
+
+function backToMenu() {
+  // 联机模式下断开连接
+  if (isOnlineMode) {
+    cleanupP2P();
+  }
+  isOnlineMode = false;
+  roomId = null;
+  showView('menu');
+  // 返回主界面后隐藏返回按钮
+  const menuBtn = document.getElementById('menu-btn');
+  if (menuBtn) menuBtn.style.display = 'none';
+}
+
+// ========== 卡组编辑器 ==========
+
+function openDeckBuilder() {
+  showView('deck');
+  renderDeckGrid();
+}
+
+let currentRaceFilter = 'all';
+
+function renderDeckGrid() {
+  const grid = document.getElementById('deck-grid');
+  grid.innerHTML = '';
+
+  // 按种族分组
+  const raceGroups = {};
+  CARD_DECK.forEach((c, origIdx) => {
+    const race = c.race || '其他';
+    if (!raceGroups[race]) raceGroups[race] = [];
+    raceGroups[race].push({ card: c, origIdx });
+  });
+
+  // 种族显示顺序
+  const raceOrder = ['人类', '野兽', '元素', '龙族', '亡灵', '植物', '机械', '幻灵', '其他'];
+
+  if (currentRaceFilter === 'all') {
+    // 显示所有种族，按分组展示
+    raceOrder.forEach(race => {
+      if (!raceGroups[race] || raceGroups[race].length === 0) return;
+
+      // 添加种族分组标题
+      const title = document.createElement('div');
+      title.className = 'race-group-title';
+      title.textContent = `${race} (${raceGroups[race].length}张)`;
+      grid.appendChild(title);
+
+      // 创建该种族的卡牌容器
+      const raceContainer = document.createElement('div');
+      raceContainer.style.cssText = 'display: contents;';
+
+      raceGroups[race].forEach(({ card, origIdx }) => {
+        const cardEl = createDeckCardElement(card, origIdx);
+        raceContainer.appendChild(cardEl);
+      });
+
+      grid.appendChild(raceContainer);
+    });
+  } else {
+    // 只显示选中种族的卡牌
+    const filtered = raceGroups[currentRaceFilter] || [];
+    filtered.forEach(({ card, origIdx }) => {
+      const cardEl = createDeckCardElement(card, origIdx);
+      grid.appendChild(cardEl);
+    });
+  }
+
+  updateDeckCount();
+}
+
+function createDeckCardElement(c, origIdx) {
+  const isSelected = deckSelectedIndices.has(origIdx);
+
+  const el = document.createElement('div');
+  el.className = `deck-card-item${isSelected ? ' selected-deck' : ''}`;
+  el.innerHTML = cardHtml(c, false);
+
+  el.addEventListener('mouseenter', (e) => showTooltip(e, c));
+  el.addEventListener('mouseleave', hideTooltip);
+
+  el.onclick = () => toggleDeckCard(origIdx, el);
+
+  // 右键查看卡牌详情
+  el.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    showCardDetail(c);
+  });
+
+  return el;
+}
+
+function filterDeckByRace(race) {
+  currentRaceFilter = race;
+
+  // 更新按钮状态
+  document.querySelectorAll('.race-filter-btn').forEach(btn => {
+    if (btn.dataset.race === race) {
+      btn.classList.add('active');
+    } else {
+      btn.classList.remove('active');
+    }
+  });
+
+  renderDeckGrid();
+}
+
+function toggleDeckCard(idx, el) {
+  if (deckSelectedIndices.has(idx)) {
+    deckSelectedIndices.delete(idx);
+    el.classList.remove('selected-deck');
+  } else {
+    if (deckSelectedIndices.size >= 12) {
+      alert('最多只能选 12 张卡牌！');
+      return;
+    }
+    deckSelectedIndices.add(idx);
+    el.classList.add('selected-deck');
+  }
+  updateDeckCount();
+}
+
+function updateDeckCount() {
+  document.getElementById('deck-selected-count').textContent = deckSelectedIndices.size;
+}
+
+function clearDeckSelection() {
+  if (!confirm('确定清空所有已选择的卡牌？')) return;
+  deckSelectedIndices.clear();
+  renderDeckGrid();
+}
+
+function saveDeckAndBack() {
+  if (deckSelectedIndices.size < 6) {
+    alert(`至少需要选择 6 张卡牌（当前 ${deckSelectedIndices.size} 张）`);
+    return;
+  }
+  const names = Array.from(deckSelectedIndices).map(i => CARD_DECK[i].name).join('、');
+  alert(`卡组已保存！\n\n选中 ${deckSelectedIndices.size} 张牌：\n${names}\n\n（游戏时将从你的卡组中随机抽牌）`);
+  backToMenu();
+}
+
+// 初始显示主菜单 —— 多重保险确保主菜单正确显示
+function forceShowMenu() {
+  showView('menu');
+}
+
+// DOM 就绪时
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', forceShowMenu);
+} else {
+  forceShowMenu();
+}
+
+// 所有资源加载完成后再次确认
+window.addEventListener('load', function() {
+  forceShowMenu();
+  // 延迟再检查一次（防止外部脚本覆盖）
+  setTimeout(forceShowMenu, 100);
+  setTimeout(forceShowMenu, 500);
+});
+
+forceShowMenu();
+</script>
+
+</body>
+</html>
