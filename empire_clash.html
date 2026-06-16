@@ -1,0 +1,1261 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>帝国对决 EMPIRE CLASH</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+html,body { width:100%; height:100%; overflow:hidden; background:#0c1220; color:#e8eaed; font-family: -apple-system,"Microsoft YaHei",sans-serif; user-select:none; }
+button { cursor:pointer; font-family:inherit; }
+
+/* ===== 场景通用 ===== */
+.scn { position:absolute; inset:0; display:none; }
+.scn.on { display:block; }
+
+/* ===== 菜单 ===== */
+#menu { background: linear-gradient(135deg,#1a1f3a 0%,#0c1220 100%); display:flex; flex-direction:column; align-items:center; justify-content:center; padding:40px; }
+#menu h1 { font-size:48px; font-weight:500; letter-spacing:4px; margin-bottom:8px; background: linear-gradient(90deg,#ffd700,#ff9966); -webkit-background-clip:text; background-clip:text; color:transparent; }
+#menu .sub { font-size:14px; color:#888; margin-bottom:48px; letter-spacing:2px; }
+.mbtn { width:280px; padding:16px; margin:8px; font-size:15px; font-weight:500; background:rgba(255,255,255,0.05); color:#e8eaed; border:0.5px solid rgba(255,255,255,0.2); border-radius:10px; transition:all 0.2s; }
+.mbtn:hover { background:rgba(255,255,255,0.1); border-color:rgba(255,215,0,0.5); }
+.mbtn.primary { background: linear-gradient(90deg,#ffd700,#ff9966); color:#0c1220; border:none; }
+.mbtn.primary:hover { transform:translateY(-2px); box-shadow: 0 4px 20px rgba(255,215,0,0.3); }
+.mbtn:disabled { opacity:0.4; cursor:not-allowed; }
+.mrow { display:flex; flex-direction:column; align-items:center; }
+
+/* ===== 国家大厅 ===== */
+#hall { background:#0c1220; display:none; flex-direction:column; padding:16px; }
+#hall.on { display:flex; }
+.hall-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+.arena-header { display:flex; justify-content:space-between; align-items:center; position:absolute; top:0; left:0; right:0; z-index:20; padding:12px 20px; background:linear-gradient(180deg, rgba(8,12,24,0.85), rgba(8,12,24,0)); pointer-events:auto; }
+.arena-header .hall-title { color:#e8eaed; font-size:14px; }
+.arena-header .hall-tabs .tab { background:rgba(255,255,255,0.05); color:#9aa0a6; padding:6px 14px; border-radius:4px; font-size:13px; }
+.arena-header .hall-tabs .tab.active { background:rgba(74,138,255,0.25); color:#4a8aff; }
+.hall-title { font-size:18px; font-weight:500; }
+.hall-tabs { display:flex; gap:8px; }
+.tab { padding:8px 16px; font-size:13px; background:rgba(255,255,255,0.05); color:#888; border:0.5px solid rgba(255,255,255,0.1); border-radius:6px; }
+.tab.active { background:rgba(255,215,0,0.15); color:#ffd700; border-color:#ffd700; }
+.metrics { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:16px; }
+.metric { background:rgba(255,255,255,0.04); border:0.5px solid rgba(255,255,255,0.1); border-radius:10px; padding:14px; }
+.metric .lbl { font-size:12px; color:#888; margin-bottom:6px; }
+.metric .val { font-size:24px; font-weight:500; }
+.metric .trend { font-size:11px; margin-top:4px; }
+.trend.up { color:#4ade80; }
+.trend.down { color:#f87171; }
+.dept-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:16px; flex:1; align-content:start; }
+.dept { background:rgba(255,255,255,0.04); border:0.5px solid rgba(255,255,255,0.1); border-radius:10px; padding:14px; transition:all 0.2s; position:relative; }
+.dept:hover { background:rgba(255,255,255,0.08); }
+.dept.active { background:rgba(255,215,0,0.1); border-color:#ffd700; box-shadow: 0 0 0 1px #ffd700; }
+.dept .ico { font-size:24px; margin-bottom:6px; }
+.dept .nm { font-size:14px; font-weight:500; }
+.dept .ai { font-size:11px; color:#888; margin-top:4px; }
+.dept .badge { position:absolute; top:8px; right:8px; font-size:10px; padding:2px 6px; background:#ffd700; color:#0c1220; border-radius:4px; font-weight:500; }
+.hall-feed { background:rgba(0,0,0,0.3); border-radius:8px; padding:12px; height:120px; overflow-y:auto; font-size:12px; }
+.feed-item { padding:6px 0; border-bottom:0.5px solid rgba(255,255,255,0.05); color:#aaa; }
+.feed-item strong { color:#ffd700; }
+
+/* ===== 战略地图 ===== */
+#strat { background:#0c1220; display:none; flex-direction:column; padding:16px; }
+#strat.on { display:flex; }
+.strat-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+.provinces { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; flex:1; align-content:start; }
+.prov { background:rgba(255,255,255,0.04); border:0.5px solid rgba(255,255,255,0.15); border-radius:10px; padding:14px; cursor:pointer; transition:all 0.2s; }
+.prov:hover { background:rgba(255,255,255,0.08); }
+.prov.stable { border-color:#3b82f6; background:rgba(59,130,246,0.08); }
+.prov.rich { border-color:#10b981; background:rgba(16,185,129,0.08); }
+.prov.war { border-color:#f59e0b; background:rgba(245,158,11,0.08); }
+.prov.lost { border-color:#ef4444; background:rgba(239,68,68,0.08); opacity:0.6; }
+.prov .pn { font-size:15px; font-weight:500; margin-bottom:6px; }
+.prov .pst { font-size:11px; color:#888; margin-bottom:8px; }
+.prov .pm { display:flex; justify-content:space-between; font-size:12px; margin:3px 0; }
+.prov .pm .v { font-weight:500; }
+.prov-actions { display:flex; gap:6px; margin-top:10px; }
+.pbtn { flex:1; padding:6px; font-size:11px; background:rgba(255,255,255,0.05); color:#e8eaed; border:0.5px solid rgba(255,255,255,0.15); border-radius:4px; }
+.pbtn:hover { background:rgba(255,215,0,0.15); border-color:#ffd700; }
+.pbtn:disabled { opacity:0.3; cursor:not-allowed; }
+
+/* ===== 战场 ===== */
+#arena { background:#0c1220; display:none; }
+#arena.on { display:block; }
+#cv { position:absolute; inset:0; width:100%; height:100%; display:block; }
+.hud { position:absolute; top:12px; left:12px; display:flex; gap:10px; z-index:10; }
+.hud-card { background:rgba(0,0,0,0.6); backdrop-filter:blur(8px); border:0.5px solid rgba(255,255,255,0.15); border-radius:8px; padding:8px 12px; min-width:80px; }
+.hud-card .lbl { font-size:10px; color:#888; }
+.hud-card .val { font-size:16px; font-weight:500; }
+.identity-bar { position:absolute; top:12px; right:12px; display:flex; gap:4px; z-index:10; background:rgba(0,0,0,0.6); backdrop-filter:blur(8px); padding:6px; border-radius:8px; border:0.5px solid rgba(255,255,255,0.15); }
+.id-btn { width:36px; height:36px; background:rgba(255,255,255,0.05); border:0.5px solid rgba(255,255,255,0.1); border-radius:6px; font-size:18px; display:flex; align-items:center; justify-content:center; }
+.id-btn:hover { background:rgba(255,215,0,0.2); }
+.id-btn.active { background:#ffd700; border-color:#ffd700; }
+.id-btn .cd { position:absolute; bottom:-2px; left:0; height:2px; background:#f87171; }
+.dept-action { position:absolute; top:60px; right:12px; z-index:10; background:rgba(0,0,0,0.7); backdrop-filter:blur(8px); padding:8px 10px; border-radius:8px; border:0.5px solid rgba(255,215,0,0.3); min-width:200px; }
+.dept-action .da-label { color:#ffd700; font-size:11px; margin-bottom:6px; display:flex; justify-content:space-between; }
+.dept-action .da-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+.da-btn { background:rgba(255,255,255,0.06); border:0.5px solid rgba(255,255,255,0.15); border-radius:6px; padding:8px 6px; font-size:11px; color:#e8eaed; cursor:pointer; transition:all 0.15s; position:relative; overflow:hidden; }
+.da-btn:hover:not(.cooling) { background:rgba(255,215,0,0.18); border-color:#ffd700; }
+.da-btn.cooling { opacity:0.45; cursor:not-allowed; }
+.da-btn .ico { font-size:18px; display:block; margin-bottom:3px; }
+.da-btn .nm { display:block; }
+.da-btn .cost { display:block; font-size:9px; color:#888; margin-top:2px; }
+.da-btn .cd-mask { position:absolute; bottom:0; left:0; height:2px; background:#f87171; }
+.court { position:absolute; bottom:0; left:0; right:0; background:rgba(0,0,0,0.85); backdrop-filter:blur(10px); border-top:0.5px solid rgba(255,255,255,0.15); z-index:10; max-height:35vh; overflow-y:auto; }
+.court-head { display:flex; justify-content:space-between; align-items:center; padding:8px 16px; border-bottom:0.5px solid rgba(255,255,255,0.1); font-size:13px; }
+.court-head .badge { font-size:11px; color:#ffd700; }
+.scroll { position:absolute; top:8px; right:16px; display:flex; gap:8px; }
+.scroll button { padding:4px 10px; font-size:11px; background:rgba(255,255,255,0.05); color:#aaa; border:0.5px solid rgba(255,255,255,0.15); border-radius:4px; }
+.scroll button:hover { background:rgba(255,255,255,0.1); color:#fff; }
+.memo { padding:12px 16px; border-bottom:0.5px solid rgba(255,255,255,0.05); }
+.memo .mt { display:flex; justify-content:space-between; font-size:12px; margin-bottom:6px; }
+.memo .mt .who { font-weight:500; color:#ffd700; }
+.memo .mt .when { color:#666; }
+.memo .mb { font-size:13px; margin-bottom:8px; line-height:1.5; }
+.memo .ma { display:flex; gap:6px; }
+.memo .ma button { padding:4px 10px; font-size:11px; background:rgba(255,255,255,0.05); color:#e8eaed; border:0.5px solid rgba(255,255,255,0.15); border-radius:4px; }
+.memo .ma button.ok { background:rgba(74,222,128,0.15); color:#4ade80; border-color:#4ade80; }
+.memo .ma button.no { background:rgba(248,113,113,0.15); color:#f87171; border-color:#f87171; }
+.memo .ma button:hover { background:rgba(255,215,0,0.15); border-color:#ffd700; }
+.memo .cd-bar { height:2px; background:rgba(255,215,0,0.2); border-radius:1px; margin-top:6px; overflow:hidden; }
+.memo .cd-fill { height:100%; background:#ffd700; transition:width 0.5s linear; }
+
+.unit-bar { position:absolute; left:50%; transform:translateX(-50%); bottom:calc(35vh + 16px); display:flex; gap:6px; z-index:9; background:rgba(0,0,0,0.6); backdrop-filter:blur(8px); padding:6px; border-radius:8px; border:0.5px solid rgba(255,255,255,0.15); }
+.u-btn { width:48px; height:48px; background:rgba(255,255,255,0.05); border:0.5px solid rgba(255,255,255,0.1); border-radius:6px; display:flex; flex-direction:column; align-items:center; justify-content:center; font-size:10px; }
+.u-btn:hover { background:rgba(255,215,0,0.15); }
+.u-btn.sel { background:#ffd700; color:#0c1220; border-color:#ffd700; }
+.u-btn .cost { font-size:9px; color:#ffd700; }
+.u-btn.sel .cost { color:#0c1220; }
+
+/* ===== 角色选择 ===== */
+#charsel { background: linear-gradient(135deg,#1a1f3a 0%,#0c1220 100%); display:flex; flex-direction:column; align-items:center; justify-content:center; padding:40px; }
+#charsel h2 { font-size:32px; font-weight:500; margin-bottom:32px; }
+.char-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; max-width:720px; }
+.char-card { background:rgba(255,255,255,0.05); border:0.5px solid rgba(255,255,255,0.15); border-radius:12px; padding:20px; text-align:center; cursor:pointer; transition:all 0.2s; }
+.char-card:hover { background:rgba(255,215,0,0.1); border-color:#ffd700; transform:translateY(-2px); }
+.char-card .ci { font-size:48px; margin-bottom:12px; }
+.char-card .cn { font-size:18px; font-weight:500; margin-bottom:6px; }
+.char-card .cd { font-size:12px; color:#888; line-height:1.5; }
+
+/* ===== 通用浮层 ===== */
+.overlay { position:absolute; inset:0; background:rgba(0,0,0,0.7); display:flex; align-items:center; justify-content:center; z-index:100; }
+.overlay .panel { background:#1a1f3a; border:0.5px solid rgba(255,255,255,0.2); border-radius:12px; padding:32px; text-align:center; min-width:320px; }
+.overlay h2 { font-size:24px; font-weight:500; margin-bottom:16px; }
+.overlay p { font-size:13px; color:#aaa; margin-bottom:24px; }
+
+.tip { position:absolute; bottom:8px; left:8px; font-size:10px; color:#666; background:rgba(0,0,0,0.5); padding:4px 8px; border-radius:4px; z-index:5; }
+</style>
+</head>
+<body>
+
+<!-- 菜单 -->
+<div class="scn on" id="menu">
+  <h1>帝国对决</h1>
+  <p class="sub">EMPIRE CLASH · 国家决策 × 实时战场</p>
+  <div class="mrow">
+    <button class="mbtn primary" id="m-start">开始新对局</button>
+    <button class="mbtn" id="m-how">玩法说明</button>
+  </div>
+</div>
+
+<!-- 玩法说明 -->
+<div class="overlay" id="how" style="display:none">
+  <div class="panel" style="max-width:540px; text-align:left;">
+    <h2 style="text-align:center">玩法说明</h2>
+    <p style="line-height:1.7; color:#ccc;">
+      <b>· 3 个核心场景：</b>国家大厅（4 个数字 + 部门切换）、战略地图（6 省份治理）、战场（实时战斗）<br>
+      <b>· 玩家身份：</b>8 个部门任选接管，其余 AI 自动运转<br>
+      <b>· 朝堂议事：</b>部门 AI 决策以奏折形式浮现，30 秒内 批准/驳回/修改<br>
+      <b>· 胜利条件：</b>推掉敌方核心 / 国库 > 5000 且民心 > 80 持续 10 回合<br>
+      <b>· 操作：</b>WASD 移动 · 鼠标点击出兵 · 1-8 切换部门身份
+    </p>
+    <button class="mbtn primary" id="how-close" style="width:100%">知道了</button>
+  </div>
+</div>
+
+<!-- 角色选择（AI 性格） -->
+<div class="scn" id="charsel">
+  <h2>选择国家性格</h2>
+  <p class="sub" style="margin-top:-16px; margin-bottom:32px;">影响 AI 部门决策倾向</p>
+  <div class="char-grid">
+    <div class="char-card" data-char="sage">
+      <div class="ci">👑</div>
+      <div class="cn">贤君之国</div>
+      <div class="cd">平衡发展 · 各部门均衡 · 稳健优先</div>
+    </div>
+    <div class="char-card" data-char="tyrant">
+      <div class="ci">⚔️</div>
+      <div class="cn">暴君之国</div>
+      <div class="cd">军事优先 · 主动出击 · 风险高回报高</div>
+    </div>
+    <div class="char-card" data-char="corrupt">
+      <div class="ci">💰</div>
+      <div class="cn">贪官之国</div>
+      <div class="cd">敛财优先 · 商业发达 · 民心易跌</div>
+    </div>
+  </div>
+</div>
+
+<!-- 国家大厅 -->
+<div class="scn" id="hall">
+  <div class="hall-header">
+    <div class="hall-title">国家大厅 · 第 <span id="h-year">1</span> 年</div>
+    <div class="hall-tabs">
+      <button class="tab active" data-scene="hall">国家</button>
+      <button class="tab" data-scene="strat">战略</button>
+      <button class="tab" data-scene="arena">战场</button>
+      <button class="tab" id="h-speed">1×</button>
+    </div>
+  </div>
+  <div class="metrics">
+    <div class="metric"><div class="lbl">国库</div><div class="val" id="m-tre">500</div><div class="trend" id="m-tre-t">—</div></div>
+    <div class="metric"><div class="lbl">民心</div><div class="val" id="m-mor">70</div><div class="trend" id="m-mor-t">—</div></div>
+    <div class="metric"><div class="lbl">兵力上限</div><div class="val" id="m-army">50</div><div class="trend" id="m-army-t">—</div></div>
+    <div class="metric"><div class="lbl">科技</div><div class="val" id="m-tech">Lv.1</div><div class="trend" id="m-tech-t">—</div></div>
+  </div>
+  <div class="dept-grid" id="dept-grid"></div>
+  <div class="hall-feed" id="hall-feed"></div>
+</div>
+
+<!-- 战略地图 -->
+<div class="scn" id="strat">
+  <div class="strat-header">
+    <div class="hall-title">战略地图 · 6 省份</div>
+    <div class="hall-tabs">
+      <button class="tab" data-scene="hall">国家</button>
+      <button class="tab active" data-scene="strat">战略</button>
+      <button class="tab" data-scene="arena">战场</button>
+    </div>
+  </div>
+  <div class="provinces" id="provinces"></div>
+</div>
+
+<!-- 战场 -->
+<div class="scn" id="arena">
+  <div class="arena-header">
+    <div class="hall-title">战场 · 推掉敌方核心</div>
+    <div class="hall-tabs">
+      <button class="tab" data-scene="hall">国家</button>
+      <button class="tab" data-scene="strat">战略</button>
+      <button class="tab active" data-scene="arena">战场</button>
+    </div>
+  </div>
+  <canvas id="cv" tabindex="0"></canvas>
+  <div class="hud">
+    <div class="hud-card"><div class="lbl">国库</div><div class="val" id="h-tre">500</div></div>
+    <div class="hud-card"><div class="lbl">民心</div><div class="val" id="h-mor">70</div></div>
+    <div class="hud-card"><div class="lbl">兵力</div><div class="val" id="h-army">50</div></div>
+    <div class="hud-card"><div class="lbl">敌方核心</div><div class="val" id="h-ehp">500</div></div>
+  </div>
+  <div class="identity-bar" id="id-bar"></div>
+  <div class="dept-action" id="dept-action" style="display:none">
+    <div class="da-label" id="da-label">部门行动</div>
+    <div class="da-grid" id="da-grid"></div>
+  </div>
+  <div class="unit-bar" id="unit-bar"></div>
+  <div class="court">
+    <div class="court-head">
+      <div>朝堂议事 <span class="badge" id="memo-count">0 待批</span></div>
+    </div>
+    <div id="memo-list"></div>
+  </div>
+  <div class="tip">WASD 移动 · 鼠标点击出兵 · 1-8 切换部门 · 1/2/3 切换兵种</div>
+</div>
+
+<!-- 结束弹层 -->
+<div class="overlay" id="end" style="display:none">
+  <div class="panel">
+    <h2 id="end-tt">胜利</h2>
+    <p id="end-desc">推掉了敌方核心</p>
+    <button class="mbtn primary" id="m-again">再来一局</button>
+    <button class="mbtn" id="m-menu">返回菜单</button>
+  </div>
+</div>
+
+<script>
+// =====================================================
+// 数据
+// =====================================================
+const DEPTS = [
+  { id:'emperor', ico:'👑', nm:'皇帝',   key:'1' },
+  { id:'economy', ico:'💰', nm:'经济部', key:'2' },
+  { id:'military',ico:'⚔️', nm:'军事部', key:'3' },
+  { id:'politic', ico:'🏛️', nm:'政治部', key:'4' },
+  { id:'civic',   ico:'🏘️', nm:'民政部', key:'5' },
+  { id:'tech',    ico:'⚗️', nm:'科技部', key:'6' },
+  { id:'spy',     ico:'🕵️', nm:'情报局', key:'7' },
+  { id:'judge',   ico:'⚖️', nm:'司法部', key:'8' },
+];
+
+const PROVINCES_DEF = [
+  { id:'capital', nm:'京城', x:2, y:1, baseWealth:100, basePop:50 },
+  { id:'north',   nm:'北疆', x:2, y:0, baseWealth:60,  basePop:30 },
+  { id:'east',    nm:'东海', x:3, y:1, baseWealth:90,  basePop:40 },
+  { id:'west',    nm:'西境', x:0, y:1, baseWealth:50,  basePop:25 },
+  { id:'south',   nm:'南郡', x:2, y:2, baseWealth:70,  basePop:35 },
+  { id:'border',  nm:'边关', x:1, y:0, baseWealth:40,  basePop:20 },
+];
+
+const UNIT_DEFS = {
+  sword:   { nm:'剑士', cost:15, hp:60,  atk:12, range:30, spd:2.2, r:14, color:'#4488ff' },
+  archer:  { nm:'弓兵', cost:25, hp:40,  atk:18, range:140, spd:1.8, r:12, color:'#22cc88' },
+  knight:  { nm:'骑士', cost:50, hp:120, atk:25, range:35, spd:1.6, r:18, color:'#cc88ff' },
+};
+
+const CHAR_TEMPLATES = {
+  sage:    { nm:'贤君', econW:1.0, milW:0.8, polW:1.0, riskT:0.3, tone:'稳健均衡，臣以为当徐徐图之' },
+  tyrant:  { nm:'暴君', econW:0.5, milW:1.5, polW:0.6, riskT:0.9, tone:'先发制人，主公勿忧，臣必胜之' },
+  corrupt: { nm:'贪官', econW:1.4, milW:0.6, polW:0.4, riskT:0.6, tone:'有利可图，臣以为可大兴商路' },
+};
+
+// =====================================================
+// 游戏状态
+// =====================================================
+let G = {
+  year: 1, turn: 0, speed: 1, paused: false,
+  treasure: 500, morale: 70, armyMax: 50, armyCur: 30, tech: 1,
+  enemyHP: 500, enemyMaxHP: 500,
+  provinces: [], resources: [],
+  identity: 'emperor',      // 当前玩家控制
+  lastSwitch: 0,            // 身份切换冷却
+  charType: 'sage',         // AI 性格
+  memos: [],                // 奏折
+  selectedUnit: 'sword',
+  scene: 'menu',
+  over: false, win: false,
+  player: null, enemy: null, soldiers: [], particles: [],
+  arenaActive: false,
+};
+
+function newGame(charType) {
+  G.year = 1; G.turn = 0; G.speed = 1; G.paused = false;
+  G.treasure = 500; G.morale = 70; G.armyMax = 50; G.armyCur = 30; G.tech = 1;
+  G.enemyHP = 500; G.enemyMaxHP = 500;
+  G.charType = charType || 'sage';
+  G.identity = 'emperor';
+  G.lastSwitch = 0;
+  G.memos = [];
+  // 立即生成 2 条初始奏折，确保玩家能看到朝堂议事
+  G.identity = 'emperor';
+  G.memoIdSeq = 1;
+  const initialDepts = ['economy', 'military'];
+  for (const did of initialDepts) {
+    const tpls = MEMO_TEMPLATES[did] || [];
+    const valid = tpls.filter(t => t.cond(G));
+    if (valid.length === 0) continue;
+    const t = valid[randi(0, valid.length)];
+    G.memos.push({
+      id: G.memoIdSeq++,
+      dept: did,
+      text: t.tpl(G, CHAR_TEMPLATES[G.charType]),
+      act: t.act,
+      time: 30, max: 30, resolved: false,
+    });
+  }
+  G.selectedUnit = 'sword';
+  G.over = false; G.win = false;
+  G.provinces = PROVINCES_DEF.map(p => ({
+    id:p.id, nm:p.nm, x:p.x, y:p.y,
+    wealth:p.baseWealth, pop:p.basePop, troops:5,
+    status:'stable', // stable/rich/war/lost
+  }));
+  G.resources = [];
+  for (let i=0; i<70; i++) {
+    G.resources.push({
+      x: 100 + Math.random()*1400,
+      y: 100 + Math.random()*800,
+      v: 10, alive: true,
+    });
+  }
+  G.player = { x: 800, y: 500, r: 24, vx:0, vy:0, hp: 100 };
+  G.enemy = { x: 1300, y: 500, r: 35, hp: 500 };
+  G.soldiers = [];
+  G.particles = [];
+  G.actionCD = {};  // 部门行动冷却 {actionId: 剩余秒}
+  spawnEnemyInitial();
+}
+
+function spawnEnemyInitial() {
+  for (let i=0; i<6; i++) {
+    G.soldiers.push({
+      x: 1200 + Math.random()*200, y: 400 + Math.random()*200,
+      type:'sword', side:1, hp:60, atk:12, range:30, spd:1.8, r:14, color:'#ff4444',
+      atkCD:0, target:null,
+    });
+  }
+}
+
+// =====================================================
+// 工具
+// =====================================================
+const $ = id => document.getElementById(id);
+function go(name) {
+  document.querySelectorAll('.scn').forEach(s => s.classList.remove('on'));
+  const el = $(name);
+  if (el) el.classList.add('on');
+  G.scene = name;
+  G.arenaActive = (name === 'arena');
+  if (typeof renderDeptAction === 'function') renderDeptAction();
+}
+function rand(a,b) { return a + Math.random()*(b-a); }
+function randi(a,b) { return Math.floor(rand(a,b)); }
+function clamp(v,a,b) { return Math.max(a, Math.min(b, v)); }
+
+// =====================================================
+// 朝堂议事
+// =====================================================
+const MEMO_TEMPLATES = {
+  emperor: [
+    { cond: s => s.treasury < 200, tpl: (s,ch) => `国库告急仅余 ${Math.round(s.treasury)} 金，臣请陛下速调财税`, act: '调整税率' },
+    { cond: s => s.morale < 40,   tpl: (s,ch) => `民心跌至 ${Math.round(s.morale)}，恐有暴动之虞`, act: '安抚民心' },
+    { cond: s => s.armyCur < s.armyMax*0.3, tpl: (s,ch) => `兵力仅余 ${s.armyCur}，请陛下下令征兵`, act: '下旨征兵' },
+    { cond: s => s.turn % 6 === 0, tpl: (s,ch) => `${ch.tone}，臣以为可分赏诸部以固国本`, act: '颁布赏赐' },
+  ],
+  economy: [
+    { cond: s => s.treasury < 400, tpl: (s,ch) => `国库空虚，臣请加税 ${randi(2,5)}% 以充府库`, act: '加税' },
+    { cond: s => s.morale < 50,   tpl: (s,ch) => `民生凋敝，臣请减税 ${randi(2,4)}% 休养生息`, act: '减税' },
+    { cond: s => s.turn % 8 === 0, tpl: (s,ch) => `${ch.tone}，臣请开征商税以裕国库`, act: '开商税' },
+  ],
+  military: [
+    { cond: s => s.armyCur < s.armyMax*0.5, tpl: (s,ch) => `兵员不足，臣请征兵 ${randi(20,50)}，耗 ${randi(150,300)} 金`, act: '征兵' },
+    { cond: s => s.turn % 5 === 0, tpl: (s,ch) => `${ch.tone}，臣请加固要塞防敌军来犯`, act: '修要塞' },
+    { cond: s => s.turn % 7 === 0, tpl: (s,ch) => `${ch.tone}，臣请训练精兵以壮军威`, act: '训练' },
+  ],
+  politic: [
+    { cond: s => s.turn % 6 === 0, tpl: (s,ch) => `${ch.tone}，臣请颁行新法以安民心`, act: '颁新法' },
+    { cond: s => s.morale < 60,   tpl: (s,ch) => `民心不稳，臣请遣使宣慰`, act: '宣慰' },
+  ],
+  civic: [
+    { cond: s => s.morale < 50,   tpl: (s,ch) => `民间疾苦，臣请发放赈济`, act: '赈济' },
+    { cond: s => s.turn % 9 === 0, tpl: (s,ch) => `${ch.tone}，臣请修建水利以利民生`, act: '修水利' },
+  ],
+  tech: [
+    { cond: s => s.tech < 3 && s.turn % 8 === 0, tpl: (s,ch) => `${ch.tone}，臣请研究军事科技`, act: '研军事' },
+    { cond: s => s.turn % 10 === 0, tpl: (s,ch) => `${ch.tone}，臣请研究农业以增税收`, act: '研农业' },
+  ],
+  spy: [
+    { cond: s => s.turn % 7 === 0, tpl: (s,ch) => `${ch.tone}，臣请派间谍刺探敌情`, act: '派间谍' },
+  ],
+  judge: [
+    { cond: s => s.turn % 11 === 0, tpl: (s,ch) => `${ch.tone}，臣请审计账目以察贪腐`, act: '审计' },
+  ],
+};
+
+const MEMO_ICONS = {
+  emperor:'👑', economy:'💰', military:'⚔️', politic:'🏛️',
+  civic:'🏘️', tech:'⚗️', spy:'🕵️', judge:'⚖️',
+};
+
+// =====================================================
+// 部门行动（玩家切到该部门时显示的 3 个招牌按钮）
+// 复刻 nation_sim 的设计：玩家控制 = 部门不发奏折 + 玩家可主动执行
+// =====================================================
+const DEPT_ACTIONS = {
+  economy: [
+    { id:'eco_tax_up', ico:'📈', nm:'加税',   cost:'民心 -5 / 国库 +200', cd:5, fn:()=>{ G.treasure+=200; G.morale=clamp(G.morale-5,0,100); }},
+    { id:'eco_trade',  ico:'🚢', nm:'通商',   cost:'国库 -300',           cd:8, fn:()=>{ G.treasure-=300; G.treasure+=80; /* 立即返 80 */ }},
+    { id:'eco_farm',   ico:'🌾', nm:'春耕',   cost:'国库 -150',           cd:6, fn:()=>{ G.treasure-=150; G.morale=clamp(G.morale+3,0,100); }},
+  ],
+  military: [
+    { id:'mil_recruit',ico:'🪖', nm:'征兵',   cost:'国库 -200',           cd:5, fn:()=>{ G.treasure-=200; G.armyCur=Math.min(G.armyMax, G.armyCur+25); }},
+    { id:'mil_train',  ico:'🏋️', nm:'训练',   cost:'国库 -150',           cd:6, fn:()=>{ G.treasure-=150; G.atkBuff=(G.atkBuff||0)+0.2; }},
+    { id:'mil_fort',   ico:'🏰', nm:'修要塞', cost:'国库 -300',           cd:10,fn:()=>{ G.treasure-=300; G.defBuff=(G.defBuff||0)+0.3; }},
+  ],
+  politic: [
+    { id:'pol_law',    ico:'📖', nm:'新法',   cost:'民心 +5',             cd:6, fn:()=>{ G.morale=clamp(G.morale+5,0,100); }},
+    { id:'pol_envoy',  ico:'✉️', nm:'宣慰',   cost:'国库 -80 / 民心 +8',  cd:5, fn:()=>{ G.treasure-=80; G.morale=clamp(G.morale+8,0,100); }},
+    { id:'pol_reform', ico:'⚖️', nm:'改革',   cost:'国库 -400',           cd:12,fn:()=>{ G.treasure-=400; G.efficiency=(G.efficiency||0)+0.1; }},
+  ],
+  civic: [
+    { id:'wel_bread',  ico:'🍞', nm:'赈济',   cost:'国库 -150 / 民心 +12',cd:6, fn:()=>{ G.treasure-=150; G.morale=clamp(G.morale+12,0,100); }},
+    { id:'wel_build',  ico:'🏗️', nm:'筑城',   cost:'国库 -200',           cd:8, fn:()=>{ G.treasure-=200; }},
+    { id:'wel_hospital',ico:'🏥',nm:'建医馆', cost:'国库 -180',           cd:8, fn:()=>{ G.treasure-=180; G.morale=clamp(G.morale+4,0,100); }},
+  ],
+  tech: [
+    { id:'tech_mil',   ico:'🗡️', nm:'军研',   cost:'国库 -200',           cd:8, fn:()=>{ G.treasure-=200; G.tech=Math.min(5,G.tech+0.5); }},
+    { id:'tech_agri',  ico:'🌱', nm:'农研',   cost:'国库 -150',           cd:8, fn:()=>{ G.treasure-=150; G.morale=clamp(G.morale+2,0,100); }},
+    { id:'tech_boom',  ico:'🏆', nm:'突破',   cost:'国库 -500',           cd:15,fn:()=>{ G.treasure-=500; G.tech=Math.min(5,G.tech+1); }},
+  ],
+  spy: [
+    { id:'spy_intel',  ico:'👁️', nm:'情报',   cost:'国库 -100',           cd:5, fn:()=>{ G.treasure-=100; G.enemyHP=Math.max(0,G.enemyHP-15); }},
+    { id:'spy_sabo',   ico:'💣', nm:'破坏',   cost:'国库 -300',           cd:10,fn:()=>{ G.treasure-=300; G.enemyHP=Math.max(0,G.enemyHP-60); }},
+    { id:'spy_heal',   ico:'💊', nm:'救治',   cost:'国库 -80',            cd:6, fn:()=>{ G.treasure-=80; G.player.hp=Math.min(100,G.player.hp+30); }},
+  ],
+  judge: [
+    { id:'jus_audit',  ico:'🔍', nm:'审计',   cost:'国库 +50',            cd:6, fn:()=>{ G.treasure+=50; G.morale=clamp(G.morale+2,0,100); }},
+    { id:'jus_trial',  ico:'🔨', nm:'审贪',   cost:'民心 +3',             cd:5, fn:()=>{ G.morale=clamp(G.morale+3,0,100); }},
+    { id:'jus_enforce',ico:'👮', nm:'执法',   cost:'国库 -100',           cd:7, fn:()=>{ G.treasure-=100; G.morale=clamp(G.morale+2,0,100); }},
+  ],
+  emperor: [
+    { id:'edict_tax',  ico:'📜', nm:'颁税',   cost:'国库 +100',           cd:6, fn:()=>{ G.treasure+=100; }},
+    { id:'edict_feast',ico:'🎉', nm:'盛宴',   cost:'国库 -300 / 民心 +10',cd:10,fn:()=>{ G.treasure-=300; G.morale=clamp(G.morale+10,0,100); }},
+    { id:'edict_rally',ico:'🥁', nm:'亲征',   cost:'兵力 +20',            cd:8, fn:()=>{ G.armyCur=Math.min(G.armyMax,G.armyCur+20); G.atkBuff=(G.atkBuff||0)+0.3; }},
+  ],
+};
+
+function aiGenerateMemos() {
+  if (G.memos.filter(m => !m.resolved).length >= 3) return;
+  const ch = CHAR_TEMPLATES[G.charType];
+  // 遍历所有部门，随机选一个想发言的
+  const candidates = [];
+  for (const dept of DEPTS) {
+    if (dept.id === G.identity) continue; // 玩家控制的部门不说话
+    const tpls = MEMO_TEMPLATES[dept.id] || [];
+    for (const t of tpls) {
+      if (t.cond(G)) candidates.push({ dept, tpl: t });
+    }
+  }
+  if (candidates.length === 0) return;
+  // 按模板权重选
+  const pick = candidates[randi(0, candidates.length)];
+  if (Math.random() > 0.4) return; // 40% 概率不发言
+  const text = pick.tpl.tpl(G, ch);
+  G.memos.push({
+    id: G.memoIdSeq++,
+    dept: pick.dept.id,
+    text,
+    act: pick.tpl.act,
+    time: 30,         // 30 秒倒计时
+    max: 30,
+    resolved: false,
+  });
+}
+
+function resolveMemo(id, action) {
+  const m = G.memos.find(x => x.id === id);
+  if (!m || m.resolved) return;
+  m.resolved = true;
+  const ch = CHAR_TEMPLATES[G.charType];
+  const factor = action === 'no' ? 0 : (action === 'change' ? 0.5 : 1);
+  // 根据部门+动作施加效果
+  if (m.dept === 'economy') {
+    if (m.act.includes('加税') || m.act.includes('商税')) {
+      G.treasure += 200 * factor;
+      G.morale  -= 5  * factor;
+    } else if (m.act.includes('减税')) {
+      G.treasure -= 100 * factor;
+      G.morale  += 8 * factor;
+    }
+  } else if (m.dept === 'military') {
+    if (m.act.includes('征兵')) {
+      const n = Math.round(30 * factor);
+      G.armyCur = Math.min(G.armyMax, G.armyCur + n);
+      G.treasure -= 200 * factor;
+    } else if (m.act.includes('修要塞')) {
+      G.treasure -= 150 * factor;
+    } else if (m.act.includes('训练')) {
+      G.treasure -= 100 * factor;
+      // 提升下次出兵伤害
+    }
+  } else if (m.dept === 'politic') {
+    if (m.act.includes('新法')) {
+      G.morale  += 5  * factor;
+    } else if (m.act.includes('宣慰')) {
+      G.morale  += 8 * factor;
+      G.treasure -= 50 * factor;
+    }
+  } else if (m.dept === 'civic') {
+    if (m.act.includes('赈济')) {
+      G.morale  += 12 * factor;
+      G.treasure -= 150 * factor;
+    } else if (m.act.includes('水利')) {
+      G.treasure -= 200 * factor;
+    }
+  } else if (m.dept === 'tech') {
+    if (m.act.includes('军事')) {
+      G.treasure -= 200 * factor;
+      G.tech = Math.min(5, G.tech + 0.5 * factor);
+    } else if (m.act.includes('农业')) {
+      G.treasure -= 150 * factor;
+    }
+  } else if (m.dept === 'spy') {
+    G.treasure -= 100 * factor;
+    // 给敌人一些伤害
+    G.enemyHP -= 30 * factor;
+  } else if (m.dept === 'judge') {
+    G.treasure -= 50 * factor;
+  } else if (m.dept === 'emperor') {
+    if (m.act.includes('税率')) {
+      G.treasure += 100 * factor;
+    } else if (m.act.includes('征兵')) {
+      G.armyCur += 20 * factor;
+      G.treasure -= 100 * factor;
+    } else if (m.act.includes('赏赐')) {
+      G.morale  += 5 * factor;
+      G.treasure -= 100 * factor;
+    }
+  }
+  pushFeed(`<strong>${m.dept}</strong> · ${m.act} · ${action==='ok'?'已批准':(action==='no'?'已驳回':'已修改')}`);
+}
+
+function tickMemos(dt) {
+  for (const m of G.memos) {
+    if (m.resolved) continue;
+    m.time -= dt;
+    if (m.time <= 0) {
+      resolveMemo(m.id, 'ok'); // 自动批准
+    }
+  }
+  // 清理已处理的
+  G.memos = G.memos.filter(m => m.time > -2);
+}
+
+// =====================================================
+// 场景切换
+// =====================================================
+function bindTabs() {
+  document.querySelectorAll('.tab[data-scene]').forEach(btn => {
+    btn.addEventListener('click', () => go(btn.dataset.scene));
+  });
+  document.querySelectorAll('.scroll button[data-scene]').forEach(btn => {
+    btn.addEventListener('click', () => go(btn.dataset.scene));
+  });
+}
+
+function pushFeed(html) {
+  const feed = $('hall-feed');
+  if (!feed) return;
+  const t = new Date();
+  const tm = `${t.getHours()}:${String(t.getMinutes()).padStart(2,'0')}`;
+  const div = document.createElement('div');
+  div.className = 'feed-item';
+  div.innerHTML = `${tm} · ${html}`;
+  feed.insertBefore(div, feed.firstChild);
+  if (feed.children.length > 30) feed.removeChild(feed.lastChild);
+}
+
+// =====================================================
+// 国家大厅渲染
+// =====================================================
+function renderHall() {
+  // 4 个数字
+  $('m-tre').textContent = Math.round(G.treasure);
+  $('m-mor').textContent = Math.round(G.morale);
+  $('m-army').textContent = G.armyCur + ' / ' + G.armyMax;
+  $('m-tech').textContent = 'Lv.' + G.tech;
+  // 趋势（用最近一次比较）
+  // 简化：显示当前部门状态
+  $('h-year').textContent = G.year;
+
+  // 部门网格
+  const grid = $('dept-grid');
+  grid.innerHTML = '';
+  for (const d of DEPTS) {
+    const isPlayer = (d.id === G.identity);
+    const isAI = !isPlayer;
+    const div = document.createElement('div');
+    div.className = 'dept' + (isPlayer ? ' active' : '');
+    div.innerHTML = `
+      <div class="ico">${d.ico}</div>
+      <div class="nm">${d.nm}</div>
+      <div class="ai">${isAI ? 'AI 控制' : '你控制中'}</div>
+      ${isPlayer ? '<div class="badge">玩家</div>' : ''}
+    `;
+    div.addEventListener('click', () => {
+      switchIdentity(d.id);
+    });
+    grid.appendChild(div);
+  }
+}
+
+function renderHUD() {
+  $('h-tre').textContent  = Math.round(G.treasure);
+  $('h-mor').textContent  = Math.round(G.morale);
+  $('h-army').textContent = G.armyCur;
+  $('h-ehp').textContent  = Math.max(0, Math.round(G.enemyHP));
+}
+
+function renderIdentityBar() {
+  const bar = $('id-bar');
+  if (!bar) return;
+  bar.innerHTML = '';
+  for (const d of DEPTS) {
+    const btn = document.createElement('button');
+    btn.className = 'id-btn' + (d.id === G.identity ? ' active' : '');
+    btn.title = d.nm;
+    btn.textContent = d.ico;
+    btn.addEventListener('click', () => switchIdentity(d.id));
+    bar.appendChild(btn);
+  }
+}
+
+function switchIdentity(id) {
+  if (id === G.identity) return;
+  const now = performance.now();
+  if (now - G.lastSwitch < 5000) {
+    pushFeed(`<strong>系统</strong> · 身份切换冷却中（剩余 ${Math.ceil((5000 - (now - G.lastSwitch))/1000)}s）`);
+    return;
+  }
+  G.identity = id;
+  G.lastSwitch = now;
+  pushFeed(`<strong>玩家</strong> · 接管 ${DEPTS.find(d=>d.id===id).nm}`);
+  renderHall();
+  renderIdentityBar();
+  renderDeptAction();
+}
+
+window.addEventListener('keydown', e => {
+  const k = e.key;
+  const dep = DEPTS.find(d => d.key === k);
+  if (dep) switchIdentity(dep.id);
+});
+
+// =====================================================
+// 战略地图渲染
+// =====================================================
+function renderStrat() {
+  const wrap = $('provinces');
+  wrap.innerHTML = '';
+  for (const p of G.provinces) {
+    const div = document.createElement('div');
+    div.className = 'prov ' + p.status;
+    const canRecruit = (G.treasure >= 100 && G.armyCur < G.armyMax);
+    div.innerHTML = `
+      <div class="pn">${p.nm}</div>
+      <div class="pst">${statusText(p)}</div>
+      <div class="pm">财富 <span class="v">${Math.round(p.wealth)}</span></div>
+      <div class="pm">人口 <span class="v">${Math.round(p.pop)}</span></div>
+      <div class="pm">驻军 <span class="v">${p.troops}</span></div>
+      <div class="prov-actions">
+        <button class="pbtn" data-act="recruit" data-pid="${p.id}" ${canRecruit?'':'disabled'}>征兵 100金</button>
+        <button class="pbtn" data-act="tax" data-pid="${p.id}">加税</button>
+        <button class="pbtn" data-act="aid" data-pid="${p.id}">赈济 80金</button>
+      </div>
+    `;
+    wrap.appendChild(div);
+  }
+  wrap.querySelectorAll('.pbtn').forEach(b => {
+    b.addEventListener('click', () => stratAction(b.dataset.act, b.dataset.pid));
+  });
+}
+function statusText(p) {
+  if (p.status === 'lost') return '沦陷 · 敌方占领';
+  if (p.status === 'war') return '战乱';
+  if (p.status === 'rich') return '繁荣';
+  return '安定';
+}
+function stratAction(act, pid) {
+  const p = G.provinces.find(x => x.id === pid);
+  if (!p) return;
+  if (act === 'recruit') {
+    if (G.treasure < 100) return;
+    G.treasure -= 100;
+    G.armyCur = Math.min(G.armyMax, G.armyCur + 5);
+    p.troops += 5;
+    pushFeed(`<strong>${p.nm}</strong> · 征兵 5 · 消耗 100 金`);
+  } else if (act === 'tax') {
+    G.treasure += 50;
+    p.morale = (p.morale || 70) - 3;
+    G.morale -= 1;
+    pushFeed(`<strong>${p.nm}</strong> · 加税 +50 金 · 民心略降`);
+  } else if (act === 'aid') {
+    if (G.treasure < 80) return;
+    G.treasure -= 80;
+    p.pop = Math.min(100, p.pop + 3);
+    G.morale += 2;
+    pushFeed(`<strong>${p.nm}</strong> · 赈济 -80 金 · 民心 +2`);
+  }
+  renderStrat();
+  renderHall();
+  renderHUD();
+}
+
+// =====================================================
+// 战场渲染（Canvas）
+// =====================================================
+let cv, ctx, mouse = { x:0, y:0, worldX:0, worldY:0 };
+function setupCanvas() {
+  cv = $('cv');
+  ctx = cv.getContext('2d');
+  resize();
+  window.addEventListener('resize', resize);
+  cv.addEventListener('mousemove', e => {
+    const r = cv.getBoundingClientRect();
+    mouse.x = e.clientX - r.left;
+    mouse.y = e.clientY - r.top;
+    mouse.worldX = mouse.x + (G.player ? G.player.x - cv.width/2 : 0);
+    mouse.worldY = mouse.y + (G.player ? G.player.y - cv.height/2 : 0);
+  });
+cv.addEventListener('mousedown', e => {
+  if (G.over || !G.arenaActive) return;
+  const r = cv.getBoundingClientRect();
+  const wx = (e.clientX - r.left) + (G.player.x - cv.width/2);
+  const wy = (e.clientY - r.top)  + (G.player.y - cv.height/2);
+  spawnSoldier(wx, wy, G.selectedUnit, 0);
+});
+// canvas 直接收键盘（避免被 body 拦截）
+cv.addEventListener('keydown', e => {
+  const k = e.key.toLowerCase();
+  if (['w','a','s','d'].includes(k)) {
+    keys[k] = true;
+    e.preventDefault();
+  }
+});
+cv.addEventListener('keyup', e => {
+  const k = e.key.toLowerCase();
+  if (['w','a','s','d'].includes(k)) keys[k] = false;
+});
+}
+function resize() {
+  if (!cv) return;
+  cv.width = window.innerWidth;
+  cv.height = window.innerHeight;
+}
+const keys = {};
+window.addEventListener('keydown', e => {
+  if (['w','a','s','d','W','A','S','D',' '].includes(e.key)) e.preventDefault();
+  keys[e.key.toLowerCase()] = true;
+}, { capture: true });
+window.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
+
+function spawnSoldier(x, y, type, side) {
+  const d = UNIT_DEFS[type];
+  if (side === 0 && G.treasure < d.cost) return;
+  if (side === 0) G.treasure -= d.cost;
+  G.soldiers.push({
+    x, y, type, side,
+    hp: d.hp, maxHp: d.hp, atk: d.atk, range: d.range, spd: d.spd,
+    r: d.r, color: side === 0 ? d.color : '#ff4444',
+    atkCD: 0, target: null,
+  });
+}
+
+function updateArena(dt) {
+  if (!G.player) return;
+  // 玩家移动
+  let dx=0, dy=0;
+  if (keys['w']) dy -= 1;
+  if (keys['s']) dy += 1;
+  if (keys['a']) dx -= 1;
+  if (keys['d']) dx += 1;
+  if (dx || dy) {
+    const len = Math.hypot(dx,dy);
+    G.player.x += (dx/len) * 3.5;
+    G.player.y += (dy/len) * 3.5;
+  }
+  G.player.x = clamp(G.player.x, 20, 1580);
+  G.player.y = clamp(G.player.y, 20, 980);
+
+  // 自动收集资源
+  for (const r of G.resources) {
+    if (!r.alive) continue;
+    const d = Math.hypot(G.player.x - r.x, G.player.y - r.y);
+    if (d < G.player.r + 30) {
+      r.alive = false;
+      G.treasure += r.v;
+      // 粒子
+      for (let i=0; i<6; i++) {
+        G.particles.push({
+          x:r.x, y:r.y, vx:rand(-2,2), vy:rand(-2,2),
+          life:0.6, color:'#22cc88', r:3
+        });
+      }
+    }
+  }
+  // 补刷资源
+  if (G.resources.filter(r=>r.alive).length < 30) {
+    G.resources.push({
+      x: 100 + Math.random()*1400,
+      y: 100 + Math.random()*800,
+      v: 10, alive: true,
+    });
+  }
+
+  // 敌军 AI 出兵
+  if (Math.random() < 0.008) {
+    spawnSoldier(1300 + rand(-50,50), 500 + rand(-200,200), 'sword', 1);
+  }
+
+  // 兵种行为：找最近敌人 / 玩家方找敌方 / 敌方找玩家或友军
+  for (const s of G.soldiers) {
+    s.atkCD = Math.max(0, s.atkCD - dt);
+    if (!s.target || s.target.hp <= 0 || Math.hypot(s.target.x-s.x, s.target.y-s.y) > 600) {
+      s.target = null;
+      let best = null, bd = 99999;
+      for (const t of G.soldiers) {
+        if (t === s || t.side === s.side || t.hp <= 0) continue;
+        const d = Math.hypot(t.x-s.x, t.y-s.y);
+        if (d < bd) { bd = d; best = t; }
+      }
+      // 兵找敌方核心 / 玩家
+      if (!best) {
+        if (s.side === 0) {
+          const d = Math.hypot(G.enemy.x - s.x, G.enemy.y - s.y);
+          if (d < bd) { bd = d; best = G.enemy; }
+        } else {
+          const d = Math.hypot(G.player.x - s.x, G.player.y - s.y);
+          if (d < bd) { bd = d; best = G.player; }
+        }
+      }
+      s.target = best;
+    }
+    if (s.target) {
+      const d = Math.hypot(s.target.x - s.x, s.target.y - s.y);
+      if (d > s.range) {
+        s.x += (s.target.x - s.x) / d * s.spd;
+        s.y += (s.target.y - s.y) / d * s.spd;
+      } else if (s.atkCD <= 0) {
+        s.target.hp -= s.atk;
+        s.atkCD = 1.0;
+        G.particles.push({
+          x: (s.x+s.target.x)/2, y:(s.y+s.target.y)/2,
+          vx:0, vy:0, life:0.3, color:'#ffaa44', r:5
+        });
+      }
+    }
+  }
+  G.soldiers = G.soldiers.filter(s => s.hp > 0);
+
+  // 玩家对敌方核心直接攻击（按 J 键）
+  if (keys['j']) {
+    const d = Math.hypot(G.enemy.x - G.player.x, G.enemy.y - G.player.y);
+    if (d < 60) {
+      G.enemyHP -= 0.5;
+      if (Math.random() < 0.2) {
+        G.particles.push({ x: G.enemy.x + rand(-20,20), y: G.enemy.y + rand(-20,20), vx:0, vy:0, life:0.3, color:'#ff6644', r:4 });
+      }
+    }
+  }
+
+  // 兵攻击敌方核心
+  for (const s of G.soldiers) {
+    if (s.side === 0 && s.target === G.enemy) {
+      const d = Math.hypot(G.enemy.x - s.x, G.enemy.y - s.y);
+      if (d <= s.range && s.atkCD <= 0) {
+        G.enemyHP -= s.atk;
+        s.atkCD = 1.0;
+      }
+    }
+  }
+
+  // 敌军兵攻击玩家核心（京城）= 玩家 HP
+  if (G.player.hp <= 0) {
+    G.over = true; G.win = false;
+    showEnd('败北', '国家陷落 · 京城被破');
+  }
+  if (G.enemyHP <= 0) {
+    G.over = true; G.win = true;
+    showEnd('胜利', '推掉敌方核心');
+  }
+
+  // 粒子
+  for (const p of G.particles) {
+    p.x += p.vx; p.y += p.vy; p.life -= dt;
+  }
+  G.particles = G.particles.filter(p => p.life > 0);
+}
+
+function drawArena() {
+  if (!ctx) return;
+  ctx.clearRect(0, 0, cv.width, cv.height);
+  // 背景
+  ctx.fillStyle = '#0f1729';
+  ctx.fillRect(0, 0, cv.width, cv.height);
+  // 网格
+  ctx.strokeStyle = 'rgba(74,138,255,0.08)';
+  ctx.lineWidth = 1;
+  for (let x = 0; x < cv.width; x += 50) {
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, cv.height); ctx.stroke();
+  }
+  for (let y = 0; y < cv.height; y += 50) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(cv.width, y); ctx.stroke();
+  }
+  // 相机偏移
+  const camX = G.player ? G.player.x - cv.width/2 : 0;
+  const camY = G.player ? G.player.y - cv.height/2 : 0;
+  ctx.save();
+  ctx.translate(-camX, -camY);
+
+  // 资源
+  for (const r of G.resources) {
+    if (!r.alive) continue;
+    ctx.fillStyle = '#22cc88';
+    ctx.shadowColor = '#22cc88';
+    ctx.shadowBlur = 8;
+    ctx.fillRect(r.x - 8, r.y - 8, 16, 16);
+    ctx.shadowBlur = 0;
+  }
+
+  // 敌方核心
+  ctx.fillStyle = '#ef4444';
+  ctx.shadowColor = '#ef4444';
+  ctx.shadowBlur = 20;
+  ctx.fillRect(G.enemy.x - 30, G.enemy.y - 30, 60, 60);
+  ctx.shadowBlur = 0;
+  // 核心血条
+  ctx.fillStyle = '#0008';
+  ctx.fillRect(G.enemy.x - 32, G.enemy.y - 45, 64, 6);
+  ctx.fillStyle = '#ef4444';
+  ctx.fillRect(G.enemy.x - 32, G.enemy.y - 45, 64 * (G.enemyHP / G.enemyMaxHP), 6);
+
+  // 玩家
+  ctx.fillStyle = '#ffd700';
+  ctx.shadowColor = '#ffd700';
+  ctx.shadowBlur = 12;
+  ctx.beginPath();
+  ctx.arc(G.player.x, G.player.y, G.player.r, 0, Math.PI*2);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+  // 玩家血条
+  ctx.fillStyle = '#0008';
+  ctx.fillRect(G.player.x - 20, G.player.y - 32, 40, 5);
+  ctx.fillStyle = '#4ade80';
+  ctx.fillRect(G.player.x - 20, G.player.y - 32, 40 * (G.player.hp/100), 5);
+
+  // 兵
+  for (const s of G.soldiers) {
+    ctx.fillStyle = s.color;
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, s.r, 0, Math.PI*2);
+    ctx.fill();
+    // 血条
+    ctx.fillStyle = '#0008';
+    ctx.fillRect(s.x - 12, s.y - s.r - 6, 24, 3);
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(s.x - 12, s.y - s.r - 6, 24 * (s.hp / s.maxHp), 3);
+  }
+
+  // 粒子
+  for (const p of G.particles) {
+    ctx.fillStyle = p.color;
+    ctx.globalAlpha = clamp(p.life * 2, 0, 1);
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  ctx.restore();
+}
+
+// =====================================================
+// 奏折渲染
+// =====================================================
+function renderMemos() {
+  const list = $('memo-list');
+  if (!list) return;
+  const pending = G.memos.filter(m => !m.resolved);
+  $('memo-count').textContent = pending.length + ' 待批';
+  // 用 id 列表作为结构签名；结构变才整体重建（避免每帧重建抢走点击事件）
+  const structSig = pending.map(m => m.id).join('|');
+  // 用 null 作为"强制重建"哨兵：避免 pending 为空时 ''==='' 导致漏重建
+  if (list._structSig !== structSig || list._force) {
+    list._structSig = structSig;
+    list._force = false;
+    list.innerHTML = '';
+    for (const m of pending) {
+      const div = document.createElement('div');
+      div.className = 'memo';
+      div.dataset.mid = m.id;
+      const ico = MEMO_ICONS[m.dept] || '📜';
+      const deptNm = DEPTS.find(d => d.id === m.dept)?.nm || m.dept;
+      div.innerHTML = `
+        <div class="mt">
+          <span class="who">${ico} ${deptNm} · 启奏</span>
+          <span class="when">剩 ${Math.max(0,Math.ceil(m.time))}s</span>
+        </div>
+        <div class="mb">${m.text}</div>
+        <div class="ma">
+          <button class="ok" data-mid="${m.id}" data-act="ok">批准</button>
+          <button class="no" data-mid="${m.id}" data-act="no">驳回</button>
+          <button data-mid="${m.id}" data-act="change">修改</button>
+        </div>
+        <div class="cd-bar"><div class="cd-fill" style="width:${(m.time/m.max*100)}%"></div></div>
+      `;
+      list.appendChild(div);
+    }
+    list.querySelectorAll('.ma button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        resolveMemo(parseInt(btn.dataset.mid, 10), btn.dataset.act);
+        list._force = true; // 强制下次重建（用 boolean 哨兵，不受空 sig 影响）
+        renderMemos();
+        renderHall();
+        renderHUD();
+      });
+    });
+  } else {
+    // 结构没变，只更新倒计时数字和进度条（轻量，不重建）
+    list.querySelectorAll('.memo').forEach(div => {
+      const id = parseInt(div.dataset.mid, 10);
+      const m = pending.find(x => x.id === id);
+      if (!m) return;
+      const when = div.querySelector('.when');
+      const fill = div.querySelector('.cd-fill');
+      if (when) when.textContent = '剩 ' + Math.max(0, Math.ceil(m.time)) + 's';
+      if (fill) fill.style.width = (m.time / m.max * 100) + '%';
+    });
+  }
+}
+
+// =====================================================
+// 部门按钮 / 兵种按钮
+// =====================================================
+function renderUnitBar() {
+  const bar = $('unit-bar');
+  if (!bar) return;
+  bar.innerHTML = '';
+  for (const k in UNIT_DEFS) {
+    const d = UNIT_DEFS[k];
+    const b = document.createElement('button');
+    b.className = 'u-btn' + (k === G.selectedUnit ? ' sel' : '');
+    b.innerHTML = `<div style="font-size:18px">${d.color==='#4488ff'?'⚔️':(d.color==='#22cc88'?'🏹':'🛡️')}</div><div>${d.nm}</div><div class="cost">${d.cost}金</div>`;
+    b.addEventListener('click', () => {
+      G.selectedUnit = k;
+      renderUnitBar();
+    });
+    bar.appendChild(b);
+  }
+}
+
+// =====================================================
+// 部门行动面板（玩家控制某部门时显示的 3 个招牌按钮）
+// 复刻 nation_sim 的"接管部门=获得该部门主动技能"设计
+// =====================================================
+function renderDeptAction() {
+  const panel = $('dept-action');
+  if (!panel) return;
+  const actions = DEPT_ACTIONS[G.identity];
+  if (!actions || G.scene !== 'arena') {
+    panel.style.display = 'none';
+    return;
+  }
+  panel.style.display = 'block';
+  const deptNm = DEPTS.find(d => d.id === G.identity)?.nm || G.identity;
+  $('da-label').innerHTML = `<span>${MEMO_ICONS[G.identity]||'📜'} ${deptNm} · 部门行动</span><span style="color:#888">点按钮执行</span>`;
+  const grid = $('da-grid');
+  grid.innerHTML = '';
+  for (const a of actions) {
+    const cd = G.actionCD[a.id] || 0;
+    const b = document.createElement('button');
+    b.className = 'da-btn' + (cd > 0 ? ' cooling' : '');
+    b.innerHTML = `
+      <span class="ico">${a.ico}</span>
+      <span class="nm">${a.nm}</span>
+      <span class="cost">${a.cost}</span>
+      ${cd > 0 ? `<div class="cd-mask" style="width:${(cd/a.cd*100)}%"></div><div style="position:absolute;top:4px;right:6px;font-size:10px;color:#f87171">${cd.toFixed(1)}s</div>` : ''}
+    `;
+    if (cd <= 0) {
+      b.addEventListener('click', () => doDeptAction(a));
+    }
+    grid.appendChild(b);
+  }
+}
+
+function doDeptAction(a) {
+  if (G.over) return;
+  if ((G.actionCD[a.id] || 0) > 0) return;
+  // 执行（fn 内已含 cost）
+  try { a.fn(); } catch(e) { console.error('action fail', e); return; }
+  G.actionCD[a.id] = a.cd;
+  const deptNm = DEPTS.find(d => d.id === G.identity)?.nm || G.identity;
+  pushFeed(`<strong>${deptNm}</strong> · 执行「${a.nm}」`);
+  renderDeptAction();
+  renderHUD();
+}
+
+function tickActionCD(dt) {
+  let changed = false;
+  for (const k in G.actionCD) {
+    if (G.actionCD[k] > 0) {
+      G.actionCD[k] = Math.max(0, G.actionCD[k] - dt);
+      changed = true;
+    }
+  }
+  return changed;
+}
+
+// =====================================================
+// 主循环
+// =====================================================
+let lastT = 0, memoCD = 0, turnCD = 0;
+function loop(now) {
+  if (!lastT) lastT = now;
+  const dt = Math.min(0.1, (now - lastT) / 1000) * G.speed;
+  lastT = now;
+
+  if (G.scene !== 'menu' && !G.over) {
+    // 回合推进
+    turnCD += dt;
+    if (turnCD > 5) {
+      turnCD = 0;
+      G.turn++;
+      // 每回合：AI 自动跑、生成奏折、资源再生
+      G.treasure += 20;
+      G.morale = clamp(G.morale + (Math.random() - 0.5) * 2, 0, 100);
+      if (G.turn % 12 === 0) G.year++;
+      aiGenerateMemos();
+    }
+    // 奏折倒计时
+    tickMemos(dt);
+    // 部门行动冷却
+    const cdChanged = tickActionCD(dt);
+    // 战场更新
+    if (G.arenaActive) updateArena(dt);
+    // 渲染
+    if (G.arenaActive) drawArena();
+    renderMemos();
+    renderHall();
+    renderHUD();
+    if (G.arenaActive) {
+      if (cdChanged) renderDeptAction(); // 冷却中每帧更新进度
+    }
+  }
+  requestAnimationFrame(loop);
+}
+
+// =====================================================
+// 结算弹窗
+// =====================================================
+function showEnd(tt, desc) {
+  $('end-tt').textContent = tt;
+  $('end-desc').textContent = desc;
+  $('end').style.display = 'flex';
+  $('m-again').onclick = () => {
+    $('end').style.display = 'none';
+    go('arena');
+    newGame(G.charType);
+    renderHall();
+    renderIdentityBar();
+    renderStrat();
+    renderUnitBar();
+    renderHUD();
+    resize();
+  };
+  $('m-menu').onclick = () => {
+    $('end').style.display = 'none';
+    go('menu');
+  };
+}
+
+// =====================================================
+// 启动
+// =====================================================
+function bind() {
+  $('m-start').addEventListener('click', () => go('charsel'));
+  $('m-how').addEventListener('click', () => $('how').style.display = 'flex');
+  $('how-close').addEventListener('click', () => $('how').style.display = 'none');
+  document.querySelectorAll('.char-card').forEach(c => {
+    c.addEventListener('click', () => {
+      newGame(c.dataset.char);
+      go('arena');
+      renderHall();
+      renderIdentityBar();
+      renderStrat();
+      renderUnitBar();
+      renderHUD();
+      renderMemos();
+      renderDeptAction();
+      resize();
+      setTimeout(()=>{ try{cv.focus()}catch(e){} }, 50);
+    });
+  });
+  $('h-speed').addEventListener('click', () => {
+    G.speed = G.speed === 1 ? 2 : (G.speed === 2 ? 4 : 1);
+    $('h-speed').textContent = G.speed + '×';
+  });
+  bindTabs();
+}
+
+setupCanvas();
+bind();
+renderIdentityBar();
+renderUnitBar();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
