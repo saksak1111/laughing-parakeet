@@ -1277,13 +1277,13 @@ function closeBattleResult(){
   panel.style.display='none';
   panel.classList.remove('on');
   
-  // 先标记战斗结束
-  state.inBattle=false;
-  
-  // 切换显示
-  mapCv.style.display='block';
+  // 切换显示：先隐藏战斗层，再显示地图层
   battleCv.style.display='none';
   $('battle-ui').style.display='none';
+  mapCv.style.display='block';
+  
+  // 标记战斗结束
+  state.inBattle=false;
   
   // 重新初始化地图Canvas尺寸
   resize();
