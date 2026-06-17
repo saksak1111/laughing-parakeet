@@ -61,6 +61,7 @@ button{cursor:pointer;font-family:inherit}
 /* 战后结算面板 */
 #battle-result-panel{display:none}
 #battle-result-panel.on{display:flex!important}
+#battle-result-panel.hidden{display:none!important}
 .result-card{background:var(--panel);border:2px solid #d4af37;border-radius:6px;padding:16px;width:420px;max-height:80vh;overflow-y:auto;box-shadow:0 0 30px rgba(212,175,55,.3)}
 .result-card h2{color:var(--gold);font-size:16px;letter-spacing:3px;margin-bottom:8px;text-align:center}
 .result-banner{text-align:center;padding:6px;font-size:13px;font-weight:bold;letter-spacing:2px;border-radius:3px;margin-bottom:10px}
@@ -1274,8 +1275,9 @@ function showBattleResult(result){
 // ===== 关闭战后面板 =====
 function closeBattleResult(){
   const panel=$('battle-result-panel');
-  panel.style.display='none';
   panel.classList.remove('on');
+  panel.classList.add('hidden');
+  panel.style.display='none';
   
   // 切换显示：先隐藏战斗层，再显示地图层
   battleCv.style.display='none';
