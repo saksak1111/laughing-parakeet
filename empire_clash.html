@@ -1096,16 +1096,19 @@ function setFormation(cmd){
 }
 
 function endBattle(win){
-  state.inBattle=false;
-  state.battleProjectiles=[];
-  state.battleFloatTexts=[];
-  state.formation='follow';
-  
-  // 计算战后结果
+  // 先计算战后结果（此时 battlePlayer 和 battleEnemy 数据还在）
   const result=calculateBattleResult(win);
   
   // 应用结果
   applyBattleResult(result);
+  
+  // 清空战斗状态
+  state.battleProjectiles=[];
+  state.battleFloatTexts=[];
+  state.formation='follow';
+  
+  // 标记战斗结束
+  state.inBattle=false;
   
   // 显示战后面板
   showBattleResult(result);
