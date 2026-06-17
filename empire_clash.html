@@ -1219,8 +1219,14 @@ function applyBattleResult(result){
 // ===== 显示战后面板 =====
 function showBattleResult(result){
   const panel=$('battle-result-panel');
+  panel.classList.remove('hidden');
   panel.style.display='flex';
   panel.classList.add('on');
+  
+  // 隐藏地图，显示战斗Canvas（面板在battle-cv上方）
+  mapCv.style.display='none';
+  battleCv.style.display='block';
+  $('battle-ui').style.display='block';
   
   // 标题和横幅
   const titles={victory:'✅ 胜利',defeat:'❌ 战败',retreat:'🏃 撤退'};
