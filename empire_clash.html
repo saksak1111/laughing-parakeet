@@ -808,13 +808,8 @@ function startBattle(enemyParty,type){
 
 function retreatFromBattle(){
   if(!state.inBattle)return;
-  state.inBattle=false;
-  mapCv.style.display='block';
-  battleCv.style.display='none';
-  $('battle-ui').style.display='none';
   addLog('battle','🏃 从战斗中撤退','bad');
-  state.losses++;
-  renderSidebar();
+  endBattle(null); // null 表示撤退，使用统一的战后处理流程
 }
 
 function toggleBattleSpeed(){
@@ -1282,12 +1277,20 @@ function closeBattleResult(){
   panel.style.display='none';
   panel.classList.remove('on');
   
+  // 先标记战斗结束
+  state.inBattle=false;
+  
+  // 切换显示
   mapCv.style.display='block';
   battleCv.style.display='none';
   $('battle-ui').style.display='none';
   
   // 重新初始化地图Canvas尺寸
   resize();
+  
+  // 强制一帧地图重绘
+  drawMap();
+  
   // 确保地图重新获得焦点
   mapCv.focus();
   // 重置按键状态（防止卡住）
@@ -1300,6 +1303,9 @@ function closeBattleResult(){
     addLog('good',`🕊️ 释放 ${count} 名俘虏，声望 +${count*2}`,'good');
     state.pendingPrisoners=[];
   }
+  
+  renderSidebar();
+  renderTopbar();
 }
 
 // ===== 俘虏处理 =====
