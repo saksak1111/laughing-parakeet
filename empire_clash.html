@@ -1286,6 +1286,13 @@ function closeBattleResult(){
   battleCv.style.display='none';
   $('battle-ui').style.display='none';
   
+  // 重新初始化地图Canvas尺寸
+  resize();
+  // 确保地图重新获得焦点
+  mapCv.focus();
+  // 重置按键状态（防止卡住）
+  for(const k in keys)keys[k]=false;
+  
   // 自动释放未处理的俘虏
   if(state.pendingPrisoners&&state.pendingPrisoners.length>0){
     const count=state.pendingPrisoners.length;
