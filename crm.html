@@ -33,7 +33,6 @@ body {
   overflow-x: hidden;
 }
 
-/* Header */
 .header {
   position: sticky;
   top: 0;
@@ -65,15 +64,22 @@ body {
   border-radius: 50%;
 }
 .header .back-btn:active { background: rgba(255,255,255,0.15); }
+.header .sync-badge {
+  position: absolute;
+  right: 12px;
+  font-size: 11px;
+  opacity: 0.8;
+  background: rgba(255,255,255,0.2);
+  padding: 3px 10px;
+  border-radius: 10px;
+}
 
-/* Main content area */
 .main {
   padding: 16px 12px;
   padding-bottom: calc(var(--nav-height) + 24px);
   min-height: calc(100vh - var(--header-height) - var(--nav-height));
 }
 
-/* Bottom Nav */
 .bottom-nav {
   position: fixed;
   bottom: 0;
@@ -103,11 +109,9 @@ body {
 .nav-item.active { color: var(--primary); }
 .nav-item:active { opacity: 0.7; }
 
-/* Page visibility */
 .page { display: none; }
 .page.active { display: block; }
 
-/* Cards */
 .card {
   background: var(--card);
   border-radius: var(--radius);
@@ -121,7 +125,6 @@ body {
   justify-content: space-between;
 }
 
-/* Customer card */
 .customer-card {
   display: flex;
   align-items: center;
@@ -158,7 +161,6 @@ body {
 }
 .customer-arrow { color: var(--text-secondary); font-size: 20px; flex-shrink: 0; }
 
-/* Stats row */
 .stats-row {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -175,7 +177,6 @@ body {
 .stat-num { font-size: 22px; font-weight: 700; color: var(--primary); }
 .stat-label { font-size: 11px; color: var(--text-secondary); margin-top: 4px; }
 
-/* Buttons */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -223,7 +224,6 @@ body {
 }
 .fab:active { transform: scale(0.9); }
 
-/* Modal */
 .modal-overlay {
   display: none;
   position: fixed;
@@ -256,23 +256,7 @@ body {
   padding-bottom: 12px;
   border-bottom: 1px solid var(--border);
 }
-.modal-close {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  border: none;
-  background: #f1f3f4;
-  font-size: 18px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
 
-/* Form */
 .form-group { margin-bottom: 16px; }
 .form-label {
   display: block;
@@ -298,10 +282,7 @@ body {
   background: #fff;
 }
 .form-textarea { min-height: 80px; resize: vertical; }
-.form-row { display: flex; gap: 10px; }
-.form-row > * { flex: 1; }
 
-/* Transaction type toggle */
 .type-toggle {
   display: flex;
   border-radius: 10px;
@@ -318,14 +299,9 @@ body {
   cursor: pointer;
   transition: all 0.2s;
 }
-.type-toggle button.active.income {
-  background: var(--success); color: #fff;
-}
-.type-toggle button.active.expense {
-  background: var(--danger); color: #fff;
-}
+.type-toggle button.active.income { background: var(--success); color: #fff; }
+.type-toggle button.active.expense { background: var(--danger); color: #fff; }
 
-/* Followup timeline */
 .timeline { position: relative; padding-left: 24px; }
 .timeline::before {
   content: '';
@@ -366,7 +342,6 @@ body {
 .timeline-tag.neutral { background: #fef7e0; color: var(--warning); }
 .timeline-tag.negative { background: #fce8e6; color: var(--danger); }
 
-/* Transaction list */
 .txn-item {
   display: flex;
   align-items: center;
@@ -393,7 +368,6 @@ body {
 .txn-amount.income { color: var(--success); }
 .txn-amount.expense { color: var(--danger); }
 
-/* Search bar */
 .search-bar {
   display: flex;
   gap: 8px;
@@ -410,7 +384,6 @@ body {
 }
 .search-input:focus { outline: none; border-color: var(--primary); }
 
-/* Empty state */
 .empty-state {
   text-align: center;
   padding: 60px 20px;
@@ -420,7 +393,6 @@ body {
 .empty-state .empty-text { font-size: 15px; margin-bottom: 8px; }
 .empty-state .empty-hint { font-size: 13px; opacity: 0.6; }
 
-/* Action bar */
 .action-bar {
   display: flex;
   gap: 8px;
@@ -430,7 +402,6 @@ body {
 }
 .action-bar::-webkit-scrollbar { display: none; }
 
-/* Detail header */
 .detail-header {
   text-align: center;
   padding: 20px 16px;
@@ -463,7 +434,6 @@ body {
   color: var(--text-secondary);
 }
 
-/* Summary bar */
 .summary-bar {
   display: flex;
   padding: 12px 16px;
@@ -479,7 +449,6 @@ body {
 .summary-val.balance { color: var(--primary); }
 .summary-lbl { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
 
-/* Confirm dialog */
 .confirm-overlay {
   display: none;
   position: fixed;
@@ -502,7 +471,6 @@ body {
 .confirm-actions { display: flex; gap: 12px; }
 .confirm-actions button { flex: 1; }
 
-/* Toast */
 .toast {
   position: fixed;
   top: 60px;
@@ -520,7 +488,6 @@ body {
 }
 .toast.show { opacity: 1; }
 
-/* Filter tabs */
 .filter-tabs {
   display: flex;
   gap: 8px;
@@ -544,7 +511,26 @@ body {
   border-color: var(--primary);
 }
 
-/* Responsive */
+.loading-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(255,255,255,0.7);
+  z-index: 500;
+  align-items: center;
+  justify-content: center;
+}
+.loading-overlay.show { display: flex; }
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--border);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
 @media (min-width: 768px) {
   body {
     max-width: 480px;
@@ -558,16 +544,15 @@ body {
 </head>
 <body>
 
-<!-- Header -->
 <div class="header" id="header">
   <span id="headerTitle">客易记</span>
   <button class="back-btn" id="backBtn" style="display:none">←</button>
+  <span class="sync-badge" id="syncBadge">☁️ 已同步</span>
 </div>
 
-<!-- Toast -->
 <div class="toast" id="toast"></div>
+<div class="loading-overlay" id="loadingOverlay"><div class="loading-spinner"></div></div>
 
-<!-- Confirm Dialog -->
 <div class="confirm-overlay" id="confirmOverlay">
   <div class="confirm-dialog">
     <div class="confirm-msg" id="confirmMsg"></div>
@@ -578,26 +563,23 @@ body {
   </div>
 </div>
 
-<!-- FAB -->
 <button class="fab" id="fabBtn" onclick="handleFab()">+</button>
 
-<!-- ====== PAGE: Dashboard ====== -->
+<!-- PAGE: Dashboard -->
 <div class="page active" id="page-dashboard">
   <div class="main">
     <div class="stats-row">
-      <div class="stat-card"><div class="stat-num" id="statCustomers">0</div><div class="stat-label">客户</div></div>
-      <div class="stat-card"><div class="stat-num" id="statFollowups">0</div><div class="stat-label">跟进</div></div>
-      <div class="stat-card"><div class="stat-num income" id="statIncome">0</div><div class="stat-label">收入</div></div>
-      <div class="stat-card"><div class="stat-num expense" id="statExpense">0</div><div class="stat-label">支出</div></div>
+      <div class="stat-card"><div class="stat-num" id="statCustomers">-</div><div class="stat-label">客户</div></div>
+      <div class="stat-card"><div class="stat-num" id="statFollowups">-</div><div class="stat-label">跟进</div></div>
+      <div class="stat-card"><div class="stat-num income" id="statIncome">-</div><div class="stat-label">收入</div></div>
+      <div class="stat-card"><div class="stat-num expense" id="statExpense">-</div><div class="stat-label">支出</div></div>
     </div>
-
     <div class="card" style="margin-bottom:16px">
       <div style="font-size:15px;font-weight:500;margin-bottom:12px">📋 今日待回访</div>
       <div id="todayFollowups" style="font-size:13px;color:var(--text-secondary)">
         <div class="empty-state" style="padding:20px"><div class="empty-icon">🎉</div><div class="empty-text">今天没有待回访客户</div></div>
       </div>
     </div>
-
     <div class="card">
       <div style="font-size:15px;font-weight:500;margin-bottom:12px">👥 最近客户</div>
       <div id="recentCustomers">
@@ -607,26 +589,26 @@ body {
   </div>
 </div>
 
-<!-- ====== PAGE: Customers ====== -->
+<!-- PAGE: Customers -->
 <div class="page" id="page-customers">
   <div class="main">
     <div class="search-bar">
       <input type="text" class="search-input" id="customerSearch" placeholder="搜索客户姓名或电话..." oninput="renderCustomerList()">
     </div>
     <div id="customerList">
-      <div class="empty-state"><div class="empty-icon">📭</div><div class="empty-text">还没有客户</div><div class="empty-hint">点右下角 + 添加第一个客户</div></div>
+      <div class="empty-state"><div class="empty-icon">⏳</div><div class="empty-text">加载中...</div></div>
     </div>
   </div>
 </div>
 
-<!-- ====== PAGE: Customer Detail ====== -->
+<!-- PAGE: Customer Detail -->
 <div class="page" id="page-detail">
   <div class="main">
     <div id="detailContent"></div>
   </div>
 </div>
 
-<!-- ====== MODAL: Add/Edit Customer ====== -->
+<!-- MODAL: Customer -->
 <div class="modal-overlay" id="modalCustomer">
   <div class="modal">
     <div class="modal-title" id="modalCustomerTitle">添加客户</div>
@@ -667,7 +649,7 @@ body {
   </div>
 </div>
 
-<!-- ====== MODAL: Add Transaction ====== -->
+<!-- MODAL: Transaction -->
 <div class="modal-overlay" id="modalTransaction">
   <div class="modal">
     <div class="modal-title">记账</div>
@@ -681,18 +663,7 @@ body {
     </div>
     <div class="form-group">
       <label class="form-label">分类</label>
-      <select class="form-select" id="txnCategory">
-        <option value="服务费">服务费</option>
-        <option value="产品">产品</option>
-        <option value="配件">配件</option>
-        <option value="人工">人工</option>
-        <option value="其他收入">其他收入</option>
-        <option value="采购">采购</option>
-        <option value="房租">房租</option>
-        <option value="工资">工资</option>
-        <option value="交通">交通</option>
-        <option value="其他支出">其他支出</option>
-      </select>
+      <select class="form-select" id="txnCategory"></select>
     </div>
     <div class="form-group">
       <label class="form-label">备注</label>
@@ -707,7 +678,7 @@ body {
   </div>
 </div>
 
-<!-- ====== MODAL: Add Followup ====== -->
+<!-- MODAL: Followup -->
 <div class="modal-overlay" id="modalFollowup">
   <div class="modal">
     <div class="modal-title">添加跟进记录</div>
@@ -732,7 +703,6 @@ body {
   </div>
 </div>
 
-<!-- Bottom Nav -->
 <div class="bottom-nav">
   <button class="nav-item active" data-page="dashboard">
     <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
@@ -742,95 +712,125 @@ body {
     <svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
     客户
   </button>
-  <button class="nav-item" data-page="customers">
-    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/></svg>
-    记账
-  </button>
 </div>
 
 <script>
-// ====== DATA STORE ======
-const DB_KEY = 'crm_data_v1';
-let db = {
-  customers: [],
-  transactions: [],
-  followups: [],
-  currentTxnType: 'income',
-  currentFuResult: 'positive',
-  editingCustomerId: null,
-  currentCustomerId: null,
-  txnCustomerId: null,
-  fuCustomerId: null,
-  confirmCallback: null
-};
+// ====== CONFIG ======
+const REPO_OWNER = 'saksak1111';
+const REPO_NAME = 'laughing-parakeet';
+let GITHUB_TOKEN = '';
+const API_BASE = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}`;
+const CRM_LABEL = 'crm-data';
+const DATA_ISSUE_TITLE = '__CRM_DATA_STORE__';
 
-function loadDB() {
-  try {
-    const raw = localStorage.getItem(DB_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      db.customers = parsed.customers || [];
-      db.transactions = parsed.transactions || [];
-      db.followups = parsed.followups || [];
-    }
-  } catch(e) { console.error('Load DB error:', e); }
-}
-
-function saveDB() {
-  localStorage.setItem(DB_KEY, JSON.stringify({
-    customers: db.customers,
-    transactions: db.transactions,
-    followups: db.followups
-  }));
-}
-
-function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
-
-// ====== NAVIGATION ======
+// ====== GLOBAL STATE ======
+let db = { customers: [], transactions: [], followups: [] };
+let dataIssueNumber = null;
 let currentPage = 'dashboard';
+let currentTxnType = 'income';
+let currentFuResult = 'positive';
+let editingCustomerId = null;
+let currentCustomerId = null;
+let txnCustomerId = null;
+let fuCustomerId = null;
+let confirmCallback = null;
 
-function showPage(page, customerId) {
-  currentPage = page;
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  const target = document.getElementById('page-' + page);
-  if (target) target.classList.add('active');
+// ====== GITHUB API HELPERS ======
+async function githubAPI(method, path, body) {
+  const headers = {
+    'Authorization': `token ${GITHUB_TOKEN}`,
+    'Accept': 'application/vnd.github+json',
+    'Content-Type': 'application/json'
+  };
+  const opts = { method, headers };
+  if (body) opts.body = JSON.stringify(body);
 
-  // Update header
-  const titles = { dashboard: '客易记', customers: '客户列表', detail: '客户详情' };
-  document.getElementById('headerTitle').textContent = titles[page] || '客易记';
-  document.getElementById('backBtn').style.display = (page === 'detail') ? 'block' : 'none';
+  const res = await fetch(`${API_BASE}${path}`, opts);
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`GitHub API ${method} ${path}: ${res.status} - ${err.slice(0,200)}`);
+  }
+  if (res.status === 204) return null;
+  return res.json();
+}
 
-  // Update nav
-  document.querySelectorAll('.nav-item').forEach(item => {
-    item.classList.remove('active');
-    if (item.dataset.page === page || (page === 'detail' && item.dataset.page === 'customers')) {
-      item.classList.add('active');
+// ====== FIND OR CREATE DATA ISSUE ======
+async function findDataIssue() {
+  // Search for the CRM data issue
+  const issues = await githubAPI('GET', `/issues?labels=${CRM_LABEL}&state=open&per_page=100`);
+  for (const issue of issues) {
+    if (issue.title === DATA_ISSUE_TITLE) {
+      return issue;
     }
-  });
+  }
+  return null;
+}
 
-  // Show/hide FAB
-  const fab = document.getElementById('fabBtn');
-  if (page === 'dashboard' || page === 'customers') {
-    fab.style.display = 'flex';
-  } else {
-    fab.style.display = 'none';
+async function createDataIssue() {
+  // Ensure the label exists
+  try {
+    await githubAPI('GET', `/labels/${CRM_LABEL}`);
+  } catch {
+    await githubAPI('POST', '/labels', { name: CRM_LABEL, color: '1a73e8' });
   }
 
-  // Render
-  if (page === 'dashboard') renderDashboard();
-  if (page === 'customers') renderCustomerList();
-  if (page === 'detail' && customerId) renderDetail(customerId);
+  const initialData = { customers: [], transactions: [], followups: [] };
+  const issue = await githubAPI('POST', '/issues', {
+    title: DATA_ISSUE_TITLE,
+    body: JSON.stringify(initialData),
+    labels: [CRM_LABEL]
+  });
+  return issue;
 }
 
-// Nav click
-document.querySelectorAll('.nav-item').forEach(item => {
-  item.addEventListener('click', () => showPage(item.dataset.page));
-});
+// ====== LOAD DATA ======
+async function loadData() {
+  showLoading(true);
+  try {
+    let issue = await findDataIssue();
+    if (!issue) {
+      issue = await createDataIssue();
+      toast('首次使用，已创建云存储');
+    }
+    dataIssueNumber = issue.number;
+    // Parse body
+    const raw = issue.body || '{}';
+    // Handle GitHub's possible markdown wrapping
+    const jsonStr = raw.replace(/^```json\s*\n?/, '').replace(/\n?```$/, '').trim();
+    const parsed = JSON.parse(jsonStr);
+    db.customers = parsed.customers || [];
+    db.transactions = parsed.transactions || [];
+    db.followups = parsed.followups || [];
+    setSyncStatus('☁️ 已同步');
+  } catch (e) {
+    console.error('Load data error:', e);
+    setSyncStatus('⚠️ 加载失败');
+    toast('数据加载失败，请刷新重试');
+  }
+  showLoading(false);
+}
 
-// Back button
-document.getElementById('backBtn').addEventListener('click', () => {
-  if (currentPage === 'detail') showPage('customers');
-});
+// ====== SAVE DATA ======
+async function saveData() {
+  setSyncStatus('⏳ 同步中...');
+  try {
+    const body = JSON.stringify({
+      customers: db.customers,
+      transactions: db.transactions,
+      followups: db.followups
+    }, null, 2);
+    await githubAPI('PATCH', `/issues/${dataIssueNumber}`, { body });
+    setSyncStatus('☁️ 已同步');
+  } catch (e) {
+    console.error('Save data error:', e);
+    setSyncStatus('⚠️ 未同步');
+    toast('同步失败，请检查网络');
+  }
+}
+
+function setSyncStatus(text) {
+  document.getElementById('syncBadge').textContent = text;
+}
 
 // ====== TOAST ======
 function toast(msg) {
@@ -841,11 +841,16 @@ function toast(msg) {
   el._timeout = setTimeout(() => el.classList.remove('show'), 1800);
 }
 
-// ====== CONFIRM DIALOG ======
+// ====== LOADING ======
+function showLoading(show) {
+  document.getElementById('loadingOverlay').classList.toggle('show', show);
+}
+
+// ====== CONFIRM ======
 function showConfirm(msg, callback) {
   document.getElementById('confirmMsg').textContent = msg;
   document.getElementById('confirmOverlay').classList.add('show');
-  db.confirmCallback = callback;
+  confirmCallback = callback;
   document.getElementById('confirmBtn').onclick = () => {
     closeConfirm();
     if (callback) callback();
@@ -856,23 +861,55 @@ function closeConfirm() {
 }
 
 // ====== MODAL ======
-function openModal(id) {
-  document.getElementById(id).classList.add('show');
-}
-function closeModal(id) {
-  document.getElementById(id).classList.remove('show');
+function openModal(id) { document.getElementById(id).classList.add('show'); }
+function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+
+// ====== NAVIGATION ======
+function showPage(page, customerId) {
+  currentPage = page;
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  const target = document.getElementById('page-' + page);
+  if (target) target.classList.add('active');
+
+  const titles = { dashboard: '客易记', customers: '客户列表', detail: '客户详情' };
+  document.getElementById('headerTitle').textContent = titles[page] || '客易记';
+  document.getElementById('backBtn').style.display = (page === 'detail') ? 'block' : 'none';
+
+  document.querySelectorAll('.nav-item').forEach(item => {
+    item.classList.remove('active');
+    if (item.dataset.page === page || (page === 'detail' && item.dataset.page === 'customers')) {
+      item.classList.add('active');
+    }
+  });
+
+  const fab = document.getElementById('fabBtn');
+  fab.style.display = (page === 'dashboard' || page === 'customers') ? 'flex' : 'none';
+
+  if (page === 'dashboard') renderDashboard();
+  if (page === 'customers') renderCustomerList();
+  if (page === 'detail' && customerId) renderDetail(customerId);
 }
 
-// ====== FAB ======
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', () => showPage(item.dataset.page));
+});
+
+document.getElementById('backBtn').addEventListener('click', () => {
+  if (currentPage === 'detail') showPage('customers');
+});
+
 function handleFab() {
   if (currentPage === 'dashboard' || currentPage === 'customers') {
     openCustomerModal();
   }
 }
 
+// ====== ID GENERATOR ======
+function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+
 // ====== CUSTOMER CRUD ======
 function openCustomerModal(customer) {
-  db.editingCustomerId = customer ? customer.id : null;
+  editingCustomerId = customer ? customer.id : null;
   document.getElementById('modalCustomerTitle').textContent = customer ? '编辑客户' : '添加客户';
   document.getElementById('custName').value = customer ? customer.name : '';
   document.getElementById('custPhone').value = customer ? customer.phone : '';
@@ -883,7 +920,7 @@ function openCustomerModal(customer) {
   openModal('modalCustomer');
 }
 
-function saveCustomer() {
+async function saveCustomer() {
   const name = document.getElementById('custName').value.trim();
   if (!name) return toast('请输入客户姓名');
 
@@ -894,38 +931,38 @@ function saveCustomer() {
     source: document.getElementById('custSource').value,
     tags: document.getElementById('custTags').value.split(',').map(t => t.trim()).filter(Boolean),
     note: document.getElementById('custNote').value.trim(),
-    createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   };
 
-  if (db.editingCustomerId) {
-    const idx = db.customers.findIndex(c => c.id === db.editingCustomerId);
+  if (editingCustomerId) {
+    const idx = db.customers.findIndex(c => c.id === editingCustomerId);
     if (idx >= 0) {
-      data.id = db.editingCustomerId;
+      data.id = editingCustomerId;
       data.createdAt = db.customers[idx].createdAt;
       db.customers[idx] = data;
     }
   } else {
     data.id = genId();
+    data.createdAt = new Date().toISOString();
     db.customers.unshift(data);
   }
 
-  saveDB();
+  await saveData();
   closeModal('modalCustomer');
-  toast(db.editingCustomerId ? '客户已更新' : '客户已添加');
-  db.editingCustomerId = null;
+  toast(editingCustomerId ? '客户已更新' : '客户已添加');
+  editingCustomerId = null;
 
   if (currentPage === 'dashboard') renderDashboard();
   if (currentPage === 'customers') renderCustomerList();
-  if (currentPage === 'detail') renderDetail(db.currentCustomerId);
+  if (currentPage === 'detail') renderDetail(currentCustomerId);
 }
 
 function deleteCustomer(id) {
-  showConfirm('确定删除该客户及其所有记账和跟进记录吗？', () => {
+  showConfirm('确定删除该客户及其所有记账和跟进记录吗？', async () => {
     db.customers = db.customers.filter(c => c.id !== id);
     db.transactions = db.transactions.filter(t => t.customerId !== id);
     db.followups = db.followups.filter(f => f.customerId !== id);
-    saveDB();
+    await saveData();
     toast('已删除');
     showPage('customers');
   });
@@ -933,24 +970,21 @@ function deleteCustomer(id) {
 
 // ====== TRANSACTION ======
 function setTxnType(type, btn) {
-  db.currentTxnType = type;
+  currentTxnType = type;
   btn.parentElement.querySelectorAll('button').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
-  // Update category options
   const cat = document.getElementById('txnCategory');
   const incomeCats = ['服务费','产品','配件','人工','其他收入'];
   const expenseCats = ['采购','房租','工资','交通','其他支出'];
-  const cats = type === 'income' ? incomeCats : expenseCats;
-  cat.innerHTML = cats.map(c => `<option value="${c}">${c}</option>`).join('');
+  cat.innerHTML = (type === 'income' ? incomeCats : expenseCats).map(c => `<option value="${c}">${c}</option>`).join('');
 }
 
 function openTransactionModal(customerId) {
-  db.txnCustomerId = customerId;
-  db.currentTxnType = 'income';
+  txnCustomerId = customerId;
+  currentTxnType = 'income';
   document.getElementById('txnAmount').value = '';
   document.getElementById('txnNote').value = '';
   document.getElementById('txnDate').value = new Date().toISOString().slice(0, 10);
-  // Reset type toggle
   const toggle = document.querySelector('#modalTransaction .type-toggle');
   toggle.querySelectorAll('button').forEach(b => b.classList.remove('active'));
   toggle.querySelector('button.income').classList.add('active');
@@ -958,14 +992,14 @@ function openTransactionModal(customerId) {
   openModal('modalTransaction');
 }
 
-function saveTransaction() {
+async function saveTransaction() {
   const amount = parseFloat(document.getElementById('txnAmount').value);
   if (!amount || amount <= 0) return toast('请输入有效金额');
 
   const txn = {
     id: genId(),
-    customerId: db.txnCustomerId,
-    type: db.currentTxnType,
+    customerId: txnCustomerId,
+    type: currentTxnType,
     amount,
     category: document.getElementById('txnCategory').value,
     note: document.getElementById('txnNote').value.trim(),
@@ -974,77 +1008,75 @@ function saveTransaction() {
   };
 
   db.transactions.unshift(txn);
-  saveDB();
+  await saveData();
   closeModal('modalTransaction');
   toast('记账成功');
 
   if (currentPage === 'dashboard') renderDashboard();
-  if (currentPage === 'detail') renderDetail(db.currentCustomerId);
+  if (currentPage === 'detail') renderDetail(currentCustomerId);
 }
 
 function deleteTransaction(id) {
-  showConfirm('确定删除这条记录吗？', () => {
+  showConfirm('确定删除这条记录吗？', async () => {
     db.transactions = db.transactions.filter(t => t.id !== id);
-    saveDB();
-    if (currentPage === 'detail') renderDetail(db.currentCustomerId);
+    await saveData();
+    if (currentPage === 'detail') renderDetail(currentCustomerId);
     toast('已删除');
   });
 }
 
 // ====== FOLLOWUP ======
 function setFuResult(result, btn) {
-  db.currentFuResult = result;
+  currentFuResult = result;
   btn.parentElement.querySelectorAll('button').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
 }
 
 function openFollowupModal(customerId) {
-  db.fuCustomerId = customerId;
-  db.currentFuResult = 'positive';
+  fuCustomerId = customerId;
+  currentFuResult = 'positive';
   document.getElementById('fuContent').value = '';
   document.getElementById('fuNextDate').value = '';
-  // Reset result tabs
   const tabs = document.querySelectorAll('#modalFollowup .filter-tab');
   tabs.forEach(t => t.classList.remove('active'));
   tabs[0].classList.add('active');
   openModal('modalFollowup');
 }
 
-function saveFollowup() {
+async function saveFollowup() {
   const content = document.getElementById('fuContent').value.trim();
   if (!content) return toast('请输入跟进内容');
 
   const fu = {
     id: genId(),
-    customerId: db.fuCustomerId,
+    customerId: fuCustomerId,
     content,
-    result: db.currentFuResult,
+    result: currentFuResult,
     nextDate: document.getElementById('fuNextDate').value || null,
     date: new Date().toISOString().slice(0, 10),
     createdAt: new Date().toISOString()
   };
 
   db.followups.unshift(fu);
-  saveDB();
+  await saveData();
   closeModal('modalFollowup');
   toast('跟进记录已保存');
 
   if (currentPage === 'dashboard') renderDashboard();
-  if (currentPage === 'detail') renderDetail(db.currentCustomerId);
+  if (currentPage === 'detail') renderDetail(currentCustomerId);
 }
 
 function deleteFollowup(id) {
-  showConfirm('确定删除这条跟进记录吗？', () => {
+  showConfirm('确定删除这条跟进记录吗？', async () => {
     db.followups = db.followups.filter(f => f.id !== id);
-    saveDB();
-    if (currentPage === 'detail') renderDetail(db.currentCustomerId);
+    await saveData();
+    if (currentPage === 'detail') renderDetail(currentCustomerId);
     toast('已删除');
   });
 }
 
 // ====== RENDER: Dashboard ======
 function renderDashboard() {
-  // Stats
   document.getElementById('statCustomers').textContent = db.customers.length;
   document.getElementById('statFollowups').textContent = db.followups.length;
 
@@ -1053,7 +1085,6 @@ function renderDashboard() {
   document.getElementById('statIncome').textContent = '¥' + totalIncome.toFixed(0);
   document.getElementById('statExpense').textContent = '¥' + totalExpense.toFixed(0);
 
-  // Today followups
   const today = new Date().toISOString().slice(0, 10);
   const todayFus = db.followups.filter(f => f.nextDate === today);
   const todayDiv = document.getElementById('todayFollowups');
@@ -1070,7 +1101,6 @@ function renderDashboard() {
     }).join('');
   }
 
-  // Recent customers
   const recentDiv = document.getElementById('recentCustomers');
   const recent = db.customers.slice(0, 5);
   if (recent.length === 0) {
@@ -1106,11 +1136,9 @@ function renderCustomerList() {
   }
 
   container.innerHTML = list.map(c => {
-    // Count transactions
     const txns = db.transactions.filter(t => t.customerId === c.id);
     const fus = db.followups.filter(f => f.customerId === c.id);
     const lastFu = fus.length > 0 ? fus[0] : null;
-
     const tagsHtml = (c.tags || []).map(t => `<span class="customer-tag">${t}</span>`).join('');
 
     return `
@@ -1132,7 +1160,7 @@ function renderCustomerList() {
 
 // ====== RENDER: Detail ======
 function renderDetail(customerId) {
-  db.currentCustomerId = customerId;
+  currentCustomerId = customerId;
   const c = db.customers.find(c => c.id === customerId);
   if (!c) return showPage('customers');
 
@@ -1164,7 +1192,6 @@ function renderDetail(customerId) {
       </div>
     </div>
 
-    <!-- Summary -->
     <div class="summary-bar">
       <div class="summary-item">
         <div class="summary-val income">¥${totalIncome.toFixed(0)}</div>
@@ -1180,13 +1207,11 @@ function renderDetail(customerId) {
       </div>
     </div>
 
-    <!-- Action buttons -->
     <div class="action-bar">
       <button class="btn btn-primary btn-sm" onclick="openTransactionModal('${customerId}')">💰 记账</button>
       <button class="btn btn-success btn-sm" onclick="openFollowupModal('${customerId}')">📝 跟进</button>
     </div>
 
-    <!-- Followups -->
     <div class="card">
       <div style="font-size:15px;font-weight:500;margin-bottom:12px">📝 跟进记录 (${fus.length})</div>
       ${fus.length === 0 ? '<div style="color:var(--text-secondary);font-size:13px;text-align:center;padding:12px">暂无跟进记录</div>' : ''}
@@ -1203,7 +1228,6 @@ function renderDetail(customerId) {
       </div>
     </div>
 
-    <!-- Transactions -->
     <div class="card">
       <div style="font-size:15px;font-weight:500;margin-bottom:12px">💰 收支记录 (${txns.length})</div>
       ${txns.length === 0 ? '<div style="color:var(--text-secondary);font-size:13px;text-align:center;padding:12px">暂无收支记录</div>' : ''}
@@ -1229,13 +1253,93 @@ document.querySelectorAll('.modal-overlay').forEach(overlay => {
   });
 });
 
-// ====== INIT ======
-loadDB();
-renderDashboard();
+// ====== TOKEN MANAGEMENT ======
+function getStoredToken() {
+  try { return localStorage.getItem('crm_github_token'); } catch(e) { return null; }
+}
+function setStoredToken(t) {
+  try { localStorage.setItem('crm_github_token', t); } catch(e) {}
+}
 
-// Set today's date as default for date inputs
-const today = new Date().toISOString().slice(0, 10);
-document.getElementById('txnDate').value = today;
+function showTokenPrompt() {
+  // Show a modal to input GitHub token
+  const overlay = document.createElement('div');
+  overlay.id = 'tokenOverlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:999;display:flex;align-items:center;justify-content:center;';
+  overlay.innerHTML = `
+    <div style="background:#fff;border-radius:16px;padding:28px 20px;width:320px;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,0.2);">
+      <div style="font-size:40px;margin-bottom:12px;">🔑</div>
+      <div style="font-size:17px;font-weight:600;margin-bottom:6px;">设置访问密钥</div>
+      <div style="font-size:13px;color:#666;margin-bottom:16px;line-height:1.5;">
+        需要 GitHub Token 来同步数据。<br>
+        前往 <a href="https://github.com/settings/tokens" target="_blank" style="color:var(--primary)">github.com/settings/tokens</a> 创建
+      </div>
+      <input type="password" id="tokenInput" placeholder="ghp_xxxxxxxxxxxx" style="width:100%;padding:10px 14px;border:1.5px solid #ddd;border-radius:10px;font-size:14px;text-align:center;margin-bottom:12px;font-family:monospace">
+      <button id="tokenSaveBtn" class="btn btn-primary btn-block" style="margin-bottom:8px">保存并连接</button>
+      <button id="tokenSkipBtn" class="btn btn-outline btn-block btn-sm" style="font-size:12px;color:#999;border-color:#ddd">跳过（离线模式）</button>
+      <div id="tokenError" style="color:var(--danger);font-size:12px;margin-top:8px;display:none"></div>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  document.getElementById('tokenSaveBtn').onclick = async () => {
+    const val = document.getElementById('tokenInput').value.trim();
+    if (!val) {
+      document.getElementById('tokenError').textContent = '请输入 Token';
+      document.getElementById('tokenError').style.display = 'block';
+      return;
+    }
+    GITHUB_TOKEN = val;
+    // Test the token
+    try {
+      const res = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}`, {
+        headers: { 'Authorization': `token ${GITHUB_TOKEN}` }
+      });
+      if (res.ok) {
+        setStoredToken(val);
+        overlay.remove();
+        await loadData();
+        renderDashboard();
+        document.getElementById('txnDate').value = new Date().toISOString().slice(0, 10);
+        toast('✅ 已连接到云端');
+      } else {
+        document.getElementById('tokenError').textContent = 'Token 无效，请检查';
+        document.getElementById('tokenError').style.display = 'block';
+      }
+    } catch(e) {
+      document.getElementById('tokenError').textContent = '网络错误，请重试';
+      document.getElementById('tokenError').style.display = 'block';
+    }
+  };
+
+  document.getElementById('tokenSkipBtn').onclick = () => {
+    overlay.remove();
+    // Try localStorage fallback
+    const saved = getStoredToken();
+    if (saved) {
+      GITHUB_TOKEN = saved;
+      loadData().then(() => {
+        renderDashboard();
+        document.getElementById('txnDate').value = new Date().toISOString().slice(0, 10);
+      });
+    } else {
+      document.getElementById('customerList').innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-text">未设置密钥</div><div class="empty-hint">刷新页面重新设置 GitHub Token</div></div>';
+    }
+  };
+}
+
+// ====== INIT ======
+(async function init() {
+  document.getElementById('txnDate').value = new Date().toISOString().slice(0, 10);
+
+  const savedToken = getStoredToken();
+  if (savedToken) {
+    GITHUB_TOKEN = savedToken;
+    await loadData();
+    renderDashboard();
+  } else {
+    showTokenPrompt();
+  }
+})();
 </script>
 </body>
 </html>
