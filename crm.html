@@ -1,0 +1,1241 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>客易记 - 客户管理</title>
+<style>
+:root {
+  --primary: #1a73e8;
+  --primary-light: #e8f0fe;
+  --success: #0d904f;
+  --danger: #d93025;
+  --warning: #f9ab00;
+  --bg: #f5f5f5;
+  --card: #fff;
+  --text: #202124;
+  --text-secondary: #5f6368;
+  --border: #e0e0e0;
+  --shadow: 0 1px 3px rgba(0,0,0,0.08);
+  --radius: 12px;
+  --nav-height: 60px;
+  --header-height: 52px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  overflow-x: hidden;
+}
+
+/* Header */
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--primary);
+  color: #fff;
+  height: var(--header-height);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 8px rgba(26,115,232,0.2);
+}
+.header .back-btn {
+  position: absolute;
+  left: 8px;
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 28px;
+  width: 40px;
+  height: 40px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+}
+.header .back-btn:active { background: rgba(255,255,255,0.15); }
+
+/* Main content area */
+.main {
+  padding: 16px 12px;
+  padding-bottom: calc(var(--nav-height) + 24px);
+  min-height: calc(100vh - var(--header-height) - var(--nav-height));
+}
+
+/* Bottom Nav */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: var(--nav-height);
+  background: var(--card);
+  display: flex;
+  border-top: 1px solid var(--border);
+  z-index: 100;
+  box-shadow: 0 -1px 6px rgba(0,0,0,0.05);
+}
+.nav-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  color: var(--text-secondary);
+  border: none;
+  background: none;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+.nav-item svg { width: 24px; height: 24px; margin-bottom: 3px; }
+.nav-item.active { color: var(--primary); }
+.nav-item:active { opacity: 0.7; }
+
+/* Page visibility */
+.page { display: none; }
+.page.active { display: block; }
+
+/* Cards */
+.card {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 12px;
+  box-shadow: var(--shadow);
+}
+.card-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Customer card */
+.customer-card {
+  display: flex;
+  align-items: center;
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+.customer-card:active { transform: scale(0.98); }
+.customer-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary), #4285f4);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 600;
+  margin-right: 14px;
+  flex-shrink: 0;
+}
+.customer-info { flex: 1; min-width: 0; }
+.customer-name { font-size: 16px; font-weight: 500; margin-bottom: 4px; }
+.customer-meta { font-size: 12px; color: var(--text-secondary); display: flex; gap: 12px; }
+.customer-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  background: var(--primary-light);
+  color: var(--primary);
+  margin-right: 4px;
+}
+.customer-arrow { color: var(--text-secondary); font-size: 20px; flex-shrink: 0; }
+
+/* Stats row */
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.stat-card {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 14px 8px;
+  text-align: center;
+  box-shadow: var(--shadow);
+}
+.stat-num { font-size: 22px; font-weight: 700; color: var(--primary); }
+.stat-label { font-size: 11px; color: var(--text-secondary); margin-top: 4px; }
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 20px;
+  border-radius: 24px;
+  font-size: 14px;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn:active { transform: scale(0.96); }
+.btn-primary { background: var(--primary); color: #fff; }
+.btn-outline { background: #fff; color: var(--primary); border: 1.5px solid var(--primary); }
+.btn-success { background: var(--success); color: #fff; }
+.btn-danger { background: #fff; color: var(--danger); border: 1.5px solid var(--danger); }
+.btn-sm { padding: 6px 14px; font-size: 12px; border-radius: 16px; }
+.btn-block { width: 100%; }
+.btn-group { display: flex; gap: 8px; margin-top: 12px; }
+.btn-icon {
+  width: 36px; height: 36px; padding: 0; border-radius: 50%;
+  background: var(--primary-light); color: var(--primary);
+  font-size: 20px; border: none; cursor: pointer;
+}
+.fab {
+  position: fixed;
+  bottom: calc(var(--nav-height) + 20px);
+  right: 20px;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #fff;
+  font-size: 28px;
+  border: none;
+  box-shadow: 0 4px 12px rgba(26,115,232,0.4);
+  cursor: pointer;
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s;
+}
+.fab:active { transform: scale(0.9); }
+
+/* Modal */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  z-index: 200;
+  align-items: flex-end;
+  justify-content: center;
+}
+.modal-overlay.show { display: flex; }
+.modal {
+  background: #fff;
+  border-radius: 20px 20px 0 0;
+  width: 100%;
+  max-width: 480px;
+  max-height: 85vh;
+  overflow-y: auto;
+  padding: 20px 16px 30px;
+  animation: slideUp 0.25s ease-out;
+}
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+.modal-title {
+  font-size: 18px;
+  font-weight: 600;
+  text-align: center;
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+.modal-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: #f1f3f4;
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Form */
+.form-group { margin-bottom: 16px; }
+.form-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+.form-input, .form-select, .form-textarea {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  font-size: 15px;
+  font-family: inherit;
+  background: #fafafa;
+  transition: border-color 0.2s;
+  -webkit-appearance: none;
+}
+.form-input:focus, .form-select:focus, .form-textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+  background: #fff;
+}
+.form-textarea { min-height: 80px; resize: vertical; }
+.form-row { display: flex; gap: 10px; }
+.form-row > * { flex: 1; }
+
+/* Transaction type toggle */
+.type-toggle {
+  display: flex;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1.5px solid var(--border);
+}
+.type-toggle button {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  background: #fff;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.type-toggle button.active.income {
+  background: var(--success); color: #fff;
+}
+.type-toggle button.active.expense {
+  background: var(--danger); color: #fff;
+}
+
+/* Followup timeline */
+.timeline { position: relative; padding-left: 24px; }
+.timeline::before {
+  content: '';
+  position: absolute;
+  left: 8px;
+  top: 4px;
+  bottom: 4px;
+  width: 2px;
+  background: var(--border);
+}
+.timeline-item {
+  position: relative;
+  margin-bottom: 16px;
+  padding-bottom: 4px;
+}
+.timeline-item::before {
+  content: '';
+  position: absolute;
+  left: -20px;
+  top: 6px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--primary);
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 2px var(--primary);
+}
+.timeline-date { font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; }
+.timeline-content { font-size: 14px; line-height: 1.5; }
+.timeline-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 8px;
+  font-size: 11px;
+  margin-top: 4px;
+}
+.timeline-tag.positive { background: #e6f4ea; color: var(--success); }
+.timeline-tag.neutral { background: #fef7e0; color: var(--warning); }
+.timeline-tag.negative { background: #fce8e6; color: var(--danger); }
+
+/* Transaction list */
+.txn-item {
+  display: flex;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+.txn-item:last-child { border-bottom: none; }
+.txn-icon {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  margin-right: 12px;
+  flex-shrink: 0;
+}
+.txn-icon.income { background: #e6f4ea; }
+.txn-icon.expense { background: #fce8e6; }
+.txn-info { flex: 1; min-width: 0; }
+.txn-cat { font-size: 14px; font-weight: 500; }
+.txn-date { font-size: 12px; color: var(--text-secondary); }
+.txn-amount { font-size: 16px; font-weight: 600; }
+.txn-amount.income { color: var(--success); }
+.txn-amount.expense { color: var(--danger); }
+
+/* Search bar */
+.search-bar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.search-input {
+  flex: 1;
+  padding: 10px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: 24px;
+  font-size: 14px;
+  background: #fff;
+  -webkit-appearance: none;
+}
+.search-input:focus { outline: none; border-color: var(--primary); }
+
+/* Empty state */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-secondary);
+}
+.empty-state .empty-icon { font-size: 56px; margin-bottom: 16px; opacity: 0.4; }
+.empty-state .empty-text { font-size: 15px; margin-bottom: 8px; }
+.empty-state .empty-hint { font-size: 13px; opacity: 0.6; }
+
+/* Action bar */
+.action-bar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+.action-bar::-webkit-scrollbar { display: none; }
+
+/* Detail header */
+.detail-header {
+  text-align: center;
+  padding: 20px 16px;
+  background: var(--card);
+  border-radius: var(--radius);
+  margin-bottom: 16px;
+  box-shadow: var(--shadow);
+}
+.detail-avatar {
+  width: 64px; height: 64px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary), #4285f4);
+  color: #fff;
+  font-size: 26px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 12px;
+}
+.detail-name { font-size: 20px; font-weight: 600; margin-bottom: 4px; }
+.detail-phone { font-size: 14px; color: var(--text-secondary); }
+.detail-tags { margin-top: 10px; }
+.detail-meta {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* Summary bar */
+.summary-bar {
+  display: flex;
+  padding: 12px 16px;
+  background: var(--card);
+  border-radius: var(--radius);
+  margin-bottom: 12px;
+  box-shadow: var(--shadow);
+}
+.summary-item { flex: 1; text-align: center; }
+.summary-val { font-size: 18px; font-weight: 700; }
+.summary-val.income { color: var(--success); }
+.summary-val.expense { color: var(--danger); }
+.summary-val.balance { color: var(--primary); }
+.summary-lbl { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+
+/* Confirm dialog */
+.confirm-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 300;
+  align-items: center;
+  justify-content: center;
+}
+.confirm-overlay.show { display: flex; }
+.confirm-dialog {
+  background: #fff;
+  border-radius: 16px;
+  padding: 24px 20px;
+  width: 280px;
+  text-align: center;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+}
+.confirm-msg { font-size: 15px; margin-bottom: 20px; line-height: 1.5; }
+.confirm-actions { display: flex; gap: 12px; }
+.confirm-actions button { flex: 1; }
+
+/* Toast */
+.toast {
+  position: fixed;
+  top: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #323232;
+  color: #fff;
+  padding: 10px 24px;
+  border-radius: 20px;
+  font-size: 14px;
+  z-index: 400;
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+}
+.toast.show { opacity: 1; }
+
+/* Filter tabs */
+.filter-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  overflow-x: auto;
+}
+.filter-tabs::-webkit-scrollbar { display: none; }
+.filter-tab {
+  padding: 6px 14px;
+  border-radius: 16px;
+  font-size: 13px;
+  white-space: nowrap;
+  border: 1.5px solid var(--border);
+  background: #fff;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.filter-tab.active {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+
+/* Responsive */
+@media (min-width: 768px) {
+  body {
+    max-width: 480px;
+    margin: 0 auto;
+    border-left: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+  }
+  .fab { right: calc(50% - 230px); }
+}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header" id="header">
+  <span id="headerTitle">客易记</span>
+  <button class="back-btn" id="backBtn" style="display:none">←</button>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- Confirm Dialog -->
+<div class="confirm-overlay" id="confirmOverlay">
+  <div class="confirm-dialog">
+    <div class="confirm-msg" id="confirmMsg"></div>
+    <div class="confirm-actions">
+      <button class="btn btn-outline btn-sm" onclick="closeConfirm()">取消</button>
+      <button class="btn btn-danger btn-sm" id="confirmBtn">确认</button>
+    </div>
+  </div>
+</div>
+
+<!-- FAB -->
+<button class="fab" id="fabBtn" onclick="handleFab()">+</button>
+
+<!-- ====== PAGE: Dashboard ====== -->
+<div class="page active" id="page-dashboard">
+  <div class="main">
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-num" id="statCustomers">0</div><div class="stat-label">客户</div></div>
+      <div class="stat-card"><div class="stat-num" id="statFollowups">0</div><div class="stat-label">跟进</div></div>
+      <div class="stat-card"><div class="stat-num income" id="statIncome">0</div><div class="stat-label">收入</div></div>
+      <div class="stat-card"><div class="stat-num expense" id="statExpense">0</div><div class="stat-label">支出</div></div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
+      <div style="font-size:15px;font-weight:500;margin-bottom:12px">📋 今日待回访</div>
+      <div id="todayFollowups" style="font-size:13px;color:var(--text-secondary)">
+        <div class="empty-state" style="padding:20px"><div class="empty-icon">🎉</div><div class="empty-text">今天没有待回访客户</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div style="font-size:15px;font-weight:500;margin-bottom:12px">👥 最近客户</div>
+      <div id="recentCustomers">
+        <div class="empty-state" style="padding:24px"><div class="empty-icon">📭</div><div class="empty-text">还没有客户，点右下角 + 添加</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ====== PAGE: Customers ====== -->
+<div class="page" id="page-customers">
+  <div class="main">
+    <div class="search-bar">
+      <input type="text" class="search-input" id="customerSearch" placeholder="搜索客户姓名或电话..." oninput="renderCustomerList()">
+    </div>
+    <div id="customerList">
+      <div class="empty-state"><div class="empty-icon">📭</div><div class="empty-text">还没有客户</div><div class="empty-hint">点右下角 + 添加第一个客户</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ====== PAGE: Customer Detail ====== -->
+<div class="page" id="page-detail">
+  <div class="main">
+    <div id="detailContent"></div>
+  </div>
+</div>
+
+<!-- ====== MODAL: Add/Edit Customer ====== -->
+<div class="modal-overlay" id="modalCustomer">
+  <div class="modal">
+    <div class="modal-title" id="modalCustomerTitle">添加客户</div>
+    <div class="form-group">
+      <label class="form-label">姓名 *</label>
+      <input type="text" class="form-input" id="custName" placeholder="客户姓名">
+    </div>
+    <div class="form-group">
+      <label class="form-label">电话</label>
+      <input type="tel" class="form-input" id="custPhone" placeholder="手机号码">
+    </div>
+    <div class="form-group">
+      <label class="form-label">地址</label>
+      <input type="text" class="form-input" id="custAddress" placeholder="地址（选填）">
+    </div>
+    <div class="form-group">
+      <label class="form-label">来源</label>
+      <select class="form-select" id="custSource">
+        <option value="">请选择</option>
+        <option value="转介绍">转介绍</option>
+        <option value="上门">上门</option>
+        <option value="电话">电话</option>
+        <option value="微信">微信</option>
+        <option value="活动">活动</option>
+        <option value="其他">其他</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">标签（逗号分隔）</label>
+      <input type="text" class="form-input" id="custTags" placeholder="如：VIP,老客户,高意向">
+    </div>
+    <div class="form-group">
+      <label class="form-label">备注</label>
+      <textarea class="form-textarea" id="custNote" placeholder="备注信息（选填）"></textarea>
+    </div>
+    <button class="btn btn-primary btn-block" onclick="saveCustomer()">保存</button>
+    <button class="btn btn-outline btn-block" style="margin-top:8px" onclick="closeModal('modalCustomer')">取消</button>
+  </div>
+</div>
+
+<!-- ====== MODAL: Add Transaction ====== -->
+<div class="modal-overlay" id="modalTransaction">
+  <div class="modal">
+    <div class="modal-title">记账</div>
+    <div class="type-toggle" style="margin-bottom:16px">
+      <button class="income active" onclick="setTxnType('income',this)">💰 收入</button>
+      <button class="expense" onclick="setTxnType('expense',this)">💸 支出</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">金额 *</label>
+      <input type="number" class="form-input" id="txnAmount" placeholder="0.00" step="0.01" min="0">
+    </div>
+    <div class="form-group">
+      <label class="form-label">分类</label>
+      <select class="form-select" id="txnCategory">
+        <option value="服务费">服务费</option>
+        <option value="产品">产品</option>
+        <option value="配件">配件</option>
+        <option value="人工">人工</option>
+        <option value="其他收入">其他收入</option>
+        <option value="采购">采购</option>
+        <option value="房租">房租</option>
+        <option value="工资">工资</option>
+        <option value="交通">交通</option>
+        <option value="其他支出">其他支出</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">备注</label>
+      <input type="text" class="form-input" id="txnNote" placeholder="备注（选填）">
+    </div>
+    <div class="form-group">
+      <label class="form-label">日期</label>
+      <input type="date" class="form-input" id="txnDate">
+    </div>
+    <button class="btn btn-primary btn-block" onclick="saveTransaction()">保存</button>
+    <button class="btn btn-outline btn-block" style="margin-top:8px" onclick="closeModal('modalTransaction')">取消</button>
+  </div>
+</div>
+
+<!-- ====== MODAL: Add Followup ====== -->
+<div class="modal-overlay" id="modalFollowup">
+  <div class="modal">
+    <div class="modal-title">添加跟进记录</div>
+    <div class="form-group">
+      <label class="form-label">跟进内容 *</label>
+      <textarea class="form-textarea" id="fuContent" placeholder="记录本次跟进内容..."></textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">结果</label>
+      <div class="filter-tabs" style="margin-bottom:0">
+        <button class="filter-tab active" onclick="setFuResult('positive',this)">✅ 积极</button>
+        <button class="filter-tab" onclick="setFuResult('neutral',this)">➖ 一般</button>
+        <button class="filter-tab" onclick="setFuResult('negative',this)">❌ 消极</button>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">下次回访日期</label>
+      <input type="date" class="form-input" id="fuNextDate">
+    </div>
+    <button class="btn btn-primary btn-block" onclick="saveFollowup()">保存</button>
+    <button class="btn btn-outline btn-block" style="margin-top:8px" onclick="closeModal('modalFollowup')">取消</button>
+  </div>
+</div>
+
+<!-- Bottom Nav -->
+<div class="bottom-nav">
+  <button class="nav-item active" data-page="dashboard">
+    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
+    概览
+  </button>
+  <button class="nav-item" data-page="customers">
+    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+    客户
+  </button>
+  <button class="nav-item" data-page="customers">
+    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/></svg>
+    记账
+  </button>
+</div>
+
+<script>
+// ====== DATA STORE ======
+const DB_KEY = 'crm_data_v1';
+let db = {
+  customers: [],
+  transactions: [],
+  followups: [],
+  currentTxnType: 'income',
+  currentFuResult: 'positive',
+  editingCustomerId: null,
+  currentCustomerId: null,
+  txnCustomerId: null,
+  fuCustomerId: null,
+  confirmCallback: null
+};
+
+function loadDB() {
+  try {
+    const raw = localStorage.getItem(DB_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      db.customers = parsed.customers || [];
+      db.transactions = parsed.transactions || [];
+      db.followups = parsed.followups || [];
+    }
+  } catch(e) { console.error('Load DB error:', e); }
+}
+
+function saveDB() {
+  localStorage.setItem(DB_KEY, JSON.stringify({
+    customers: db.customers,
+    transactions: db.transactions,
+    followups: db.followups
+  }));
+}
+
+function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+
+// ====== NAVIGATION ======
+let currentPage = 'dashboard';
+
+function showPage(page, customerId) {
+  currentPage = page;
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  const target = document.getElementById('page-' + page);
+  if (target) target.classList.add('active');
+
+  // Update header
+  const titles = { dashboard: '客易记', customers: '客户列表', detail: '客户详情' };
+  document.getElementById('headerTitle').textContent = titles[page] || '客易记';
+  document.getElementById('backBtn').style.display = (page === 'detail') ? 'block' : 'none';
+
+  // Update nav
+  document.querySelectorAll('.nav-item').forEach(item => {
+    item.classList.remove('active');
+    if (item.dataset.page === page || (page === 'detail' && item.dataset.page === 'customers')) {
+      item.classList.add('active');
+    }
+  });
+
+  // Show/hide FAB
+  const fab = document.getElementById('fabBtn');
+  if (page === 'dashboard' || page === 'customers') {
+    fab.style.display = 'flex';
+  } else {
+    fab.style.display = 'none';
+  }
+
+  // Render
+  if (page === 'dashboard') renderDashboard();
+  if (page === 'customers') renderCustomerList();
+  if (page === 'detail' && customerId) renderDetail(customerId);
+}
+
+// Nav click
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', () => showPage(item.dataset.page));
+});
+
+// Back button
+document.getElementById('backBtn').addEventListener('click', () => {
+  if (currentPage === 'detail') showPage('customers');
+});
+
+// ====== TOAST ======
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(el._timeout);
+  el._timeout = setTimeout(() => el.classList.remove('show'), 1800);
+}
+
+// ====== CONFIRM DIALOG ======
+function showConfirm(msg, callback) {
+  document.getElementById('confirmMsg').textContent = msg;
+  document.getElementById('confirmOverlay').classList.add('show');
+  db.confirmCallback = callback;
+  document.getElementById('confirmBtn').onclick = () => {
+    closeConfirm();
+    if (callback) callback();
+  };
+}
+function closeConfirm() {
+  document.getElementById('confirmOverlay').classList.remove('show');
+}
+
+// ====== MODAL ======
+function openModal(id) {
+  document.getElementById(id).classList.add('show');
+}
+function closeModal(id) {
+  document.getElementById(id).classList.remove('show');
+}
+
+// ====== FAB ======
+function handleFab() {
+  if (currentPage === 'dashboard' || currentPage === 'customers') {
+    openCustomerModal();
+  }
+}
+
+// ====== CUSTOMER CRUD ======
+function openCustomerModal(customer) {
+  db.editingCustomerId = customer ? customer.id : null;
+  document.getElementById('modalCustomerTitle').textContent = customer ? '编辑客户' : '添加客户';
+  document.getElementById('custName').value = customer ? customer.name : '';
+  document.getElementById('custPhone').value = customer ? customer.phone : '';
+  document.getElementById('custAddress').value = customer ? customer.address : '';
+  document.getElementById('custSource').value = customer ? customer.source : '';
+  document.getElementById('custTags').value = customer ? (customer.tags || []).join(',') : '';
+  document.getElementById('custNote').value = customer ? customer.note : '';
+  openModal('modalCustomer');
+}
+
+function saveCustomer() {
+  const name = document.getElementById('custName').value.trim();
+  if (!name) return toast('请输入客户姓名');
+
+  const data = {
+    name,
+    phone: document.getElementById('custPhone').value.trim(),
+    address: document.getElementById('custAddress').value.trim(),
+    source: document.getElementById('custSource').value,
+    tags: document.getElementById('custTags').value.split(',').map(t => t.trim()).filter(Boolean),
+    note: document.getElementById('custNote').value.trim(),
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+
+  if (db.editingCustomerId) {
+    const idx = db.customers.findIndex(c => c.id === db.editingCustomerId);
+    if (idx >= 0) {
+      data.id = db.editingCustomerId;
+      data.createdAt = db.customers[idx].createdAt;
+      db.customers[idx] = data;
+    }
+  } else {
+    data.id = genId();
+    db.customers.unshift(data);
+  }
+
+  saveDB();
+  closeModal('modalCustomer');
+  toast(db.editingCustomerId ? '客户已更新' : '客户已添加');
+  db.editingCustomerId = null;
+
+  if (currentPage === 'dashboard') renderDashboard();
+  if (currentPage === 'customers') renderCustomerList();
+  if (currentPage === 'detail') renderDetail(db.currentCustomerId);
+}
+
+function deleteCustomer(id) {
+  showConfirm('确定删除该客户及其所有记账和跟进记录吗？', () => {
+    db.customers = db.customers.filter(c => c.id !== id);
+    db.transactions = db.transactions.filter(t => t.customerId !== id);
+    db.followups = db.followups.filter(f => f.customerId !== id);
+    saveDB();
+    toast('已删除');
+    showPage('customers');
+  });
+}
+
+// ====== TRANSACTION ======
+function setTxnType(type, btn) {
+  db.currentTxnType = type;
+  btn.parentElement.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  // Update category options
+  const cat = document.getElementById('txnCategory');
+  const incomeCats = ['服务费','产品','配件','人工','其他收入'];
+  const expenseCats = ['采购','房租','工资','交通','其他支出'];
+  const cats = type === 'income' ? incomeCats : expenseCats;
+  cat.innerHTML = cats.map(c => `<option value="${c}">${c}</option>`).join('');
+}
+
+function openTransactionModal(customerId) {
+  db.txnCustomerId = customerId;
+  db.currentTxnType = 'income';
+  document.getElementById('txnAmount').value = '';
+  document.getElementById('txnNote').value = '';
+  document.getElementById('txnDate').value = new Date().toISOString().slice(0, 10);
+  // Reset type toggle
+  const toggle = document.querySelector('#modalTransaction .type-toggle');
+  toggle.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+  toggle.querySelector('button.income').classList.add('active');
+  setTxnType('income', toggle.querySelector('button.income'));
+  openModal('modalTransaction');
+}
+
+function saveTransaction() {
+  const amount = parseFloat(document.getElementById('txnAmount').value);
+  if (!amount || amount <= 0) return toast('请输入有效金额');
+
+  const txn = {
+    id: genId(),
+    customerId: db.txnCustomerId,
+    type: db.currentTxnType,
+    amount,
+    category: document.getElementById('txnCategory').value,
+    note: document.getElementById('txnNote').value.trim(),
+    date: document.getElementById('txnDate').value || new Date().toISOString().slice(0, 10),
+    createdAt: new Date().toISOString()
+  };
+
+  db.transactions.unshift(txn);
+  saveDB();
+  closeModal('modalTransaction');
+  toast('记账成功');
+
+  if (currentPage === 'dashboard') renderDashboard();
+  if (currentPage === 'detail') renderDetail(db.currentCustomerId);
+}
+
+function deleteTransaction(id) {
+  showConfirm('确定删除这条记录吗？', () => {
+    db.transactions = db.transactions.filter(t => t.id !== id);
+    saveDB();
+    if (currentPage === 'detail') renderDetail(db.currentCustomerId);
+    toast('已删除');
+  });
+}
+
+// ====== FOLLOWUP ======
+function setFuResult(result, btn) {
+  db.currentFuResult = result;
+  btn.parentElement.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function openFollowupModal(customerId) {
+  db.fuCustomerId = customerId;
+  db.currentFuResult = 'positive';
+  document.getElementById('fuContent').value = '';
+  document.getElementById('fuNextDate').value = '';
+  // Reset result tabs
+  const tabs = document.querySelectorAll('#modalFollowup .filter-tab');
+  tabs.forEach(t => t.classList.remove('active'));
+  tabs[0].classList.add('active');
+  openModal('modalFollowup');
+}
+
+function saveFollowup() {
+  const content = document.getElementById('fuContent').value.trim();
+  if (!content) return toast('请输入跟进内容');
+
+  const fu = {
+    id: genId(),
+    customerId: db.fuCustomerId,
+    content,
+    result: db.currentFuResult,
+    nextDate: document.getElementById('fuNextDate').value || null,
+    date: new Date().toISOString().slice(0, 10),
+    createdAt: new Date().toISOString()
+  };
+
+  db.followups.unshift(fu);
+  saveDB();
+  closeModal('modalFollowup');
+  toast('跟进记录已保存');
+
+  if (currentPage === 'dashboard') renderDashboard();
+  if (currentPage === 'detail') renderDetail(db.currentCustomerId);
+}
+
+function deleteFollowup(id) {
+  showConfirm('确定删除这条跟进记录吗？', () => {
+    db.followups = db.followups.filter(f => f.id !== id);
+    saveDB();
+    if (currentPage === 'detail') renderDetail(db.currentCustomerId);
+    toast('已删除');
+  });
+}
+
+// ====== RENDER: Dashboard ======
+function renderDashboard() {
+  // Stats
+  document.getElementById('statCustomers').textContent = db.customers.length;
+  document.getElementById('statFollowups').textContent = db.followups.length;
+
+  const totalIncome = db.transactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+  const totalExpense = db.transactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+  document.getElementById('statIncome').textContent = '¥' + totalIncome.toFixed(0);
+  document.getElementById('statExpense').textContent = '¥' + totalExpense.toFixed(0);
+
+  // Today followups
+  const today = new Date().toISOString().slice(0, 10);
+  const todayFus = db.followups.filter(f => f.nextDate === today);
+  const todayDiv = document.getElementById('todayFollowups');
+  if (todayFus.length === 0) {
+    todayDiv.innerHTML = '<div class="empty-state" style="padding:20px"><div class="empty-icon">🎉</div><div class="empty-text">今天没有待回访客户</div></div>';
+  } else {
+    todayDiv.innerHTML = todayFus.map(f => {
+      const c = db.customers.find(c => c.id === f.customerId);
+      return `<div style="padding:8px 0;border-bottom:1px solid #f0f0f0;cursor:pointer" onclick="showPage('detail','${f.customerId}')">
+        <span style="font-weight:500">${c ? c.name : '未知客户'}</span>
+        <span style="color:var(--text-secondary);font-size:12px;margin-left:8px">${c ? c.phone : ''}</span>
+        <span style="float:right;font-size:12px;color:var(--text-secondary)">${f.content.slice(0,20)}...</span>
+      </div>`;
+    }).join('');
+  }
+
+  // Recent customers
+  const recentDiv = document.getElementById('recentCustomers');
+  const recent = db.customers.slice(0, 5);
+  if (recent.length === 0) {
+    recentDiv.innerHTML = '<div class="empty-state" style="padding:24px"><div class="empty-icon">📭</div><div class="empty-text">还没有客户，点右下角 + 添加</div></div>';
+  } else {
+    recentDiv.innerHTML = recent.map(c => `
+      <div class="customer-card" onclick="showPage('detail','${c.id}')" style="padding:12px 0;border-bottom:1px solid #f0f0f0">
+        <div class="customer-avatar">${c.name[0]}</div>
+        <div class="customer-info">
+          <div class="customer-name">${c.name}</div>
+          <div class="customer-meta">${c.phone || '无电话'} · ${c.source || '未分类'}</div>
+        </div>
+        <div class="customer-arrow">›</div>
+      </div>
+    `).join('');
+  }
+}
+
+// ====== RENDER: Customer List ======
+function renderCustomerList() {
+  const search = (document.getElementById('customerSearch')?.value || '').toLowerCase();
+  let list = db.customers;
+  if (search) {
+    list = list.filter(c => c.name.toLowerCase().includes(search) || c.phone.includes(search));
+  }
+
+  const container = document.getElementById('customerList');
+  if (list.length === 0) {
+    container.innerHTML = search
+      ? '<div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-text">没有匹配的客户</div></div>'
+      : '<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-text">还没有客户</div><div class="empty-hint">点右下角 + 添加第一个客户</div></div>';
+    return;
+  }
+
+  container.innerHTML = list.map(c => {
+    // Count transactions
+    const txns = db.transactions.filter(t => t.customerId === c.id);
+    const fus = db.followups.filter(f => f.customerId === c.id);
+    const lastFu = fus.length > 0 ? fus[0] : null;
+
+    const tagsHtml = (c.tags || []).map(t => `<span class="customer-tag">${t}</span>`).join('');
+
+    return `
+    <div class="card customer-card" onclick="showPage('detail','${c.id}')" style="margin-bottom:8px">
+      <div class="customer-avatar">${c.name[0]}</div>
+      <div class="customer-info">
+        <div class="customer-name">${c.name}</div>
+        <div class="customer-meta">
+          <span>📱 ${c.phone || '-'}</span>
+          <span>📊 ${txns.length}笔</span>
+          ${lastFu ? `<span>📝 ${lastFu.date}</span>` : ''}
+        </div>
+        ${tagsHtml ? `<div style="margin-top:6px">${tagsHtml}</div>` : ''}
+      </div>
+      <div class="customer-arrow">›</div>
+    </div>`;
+  }).join('');
+}
+
+// ====== RENDER: Detail ======
+function renderDetail(customerId) {
+  db.currentCustomerId = customerId;
+  const c = db.customers.find(c => c.id === customerId);
+  if (!c) return showPage('customers');
+
+  const txns = db.transactions.filter(t => t.customerId === customerId).sort((a,b) => b.date.localeCompare(a.date));
+  const fus = db.followups.filter(f => f.customerId === customerId).sort((a,b) => b.date.localeCompare(a.date));
+
+  const totalIncome = txns.filter(t => t.type === 'income').reduce((s,t) => s + t.amount, 0);
+  const totalExpense = txns.filter(t => t.type === 'expense').reduce((s,t) => s + t.amount, 0);
+
+  const container = document.getElementById('detailContent');
+  container.innerHTML = `
+    <div class="detail-header">
+      <div class="detail-avatar">${c.name[0]}</div>
+      <div class="detail-name">${c.name}</div>
+      <div class="detail-phone">📱 ${c.phone || '未填写'}</div>
+      ${c.address ? `<div style="font-size:13px;color:var(--text-secondary);margin-top:4px">📍 ${c.address}</div>` : ''}
+      <div class="detail-tags">
+        ${(c.tags || []).map(t => `<span class="customer-tag">${t}</span>`).join('')}
+        ${c.source ? `<span class="customer-tag" style="background:#f0f0f0;color:#666">${c.source}</span>` : ''}
+      </div>
+      <div class="detail-meta">
+        <span>记账 ${txns.length} 笔</span>
+        <span>跟进 ${fus.length} 次</span>
+        <span>${c.createdAt.slice(0,10)} 添加</span>
+      </div>
+      <div style="margin-top:12px;display:flex;gap:8px;justify-content:center">
+        <button class="btn btn-outline btn-sm" onclick="openCustomerModal(db.customers.find(c=>c.id==='${customerId}'))">✏️ 编辑</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteCustomer('${customerId}')">🗑 删除</button>
+      </div>
+    </div>
+
+    <!-- Summary -->
+    <div class="summary-bar">
+      <div class="summary-item">
+        <div class="summary-val income">¥${totalIncome.toFixed(0)}</div>
+        <div class="summary-lbl">总收入</div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-val expense">¥${totalExpense.toFixed(0)}</div>
+        <div class="summary-lbl">总支出</div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-val balance">¥${(totalIncome - totalExpense).toFixed(0)}</div>
+        <div class="summary-lbl">结余</div>
+      </div>
+    </div>
+
+    <!-- Action buttons -->
+    <div class="action-bar">
+      <button class="btn btn-primary btn-sm" onclick="openTransactionModal('${customerId}')">💰 记账</button>
+      <button class="btn btn-success btn-sm" onclick="openFollowupModal('${customerId}')">📝 跟进</button>
+    </div>
+
+    <!-- Followups -->
+    <div class="card">
+      <div style="font-size:15px;font-weight:500;margin-bottom:12px">📝 跟进记录 (${fus.length})</div>
+      ${fus.length === 0 ? '<div style="color:var(--text-secondary);font-size:13px;text-align:center;padding:12px">暂无跟进记录</div>' : ''}
+      <div class="timeline">
+        ${fus.slice(0, 10).map(f => `
+          <div class="timeline-item">
+            <div class="timeline-date">${f.date}</div>
+            <div class="timeline-content">${f.content}</div>
+            <span class="timeline-tag ${f.result}">${f.result === 'positive' ? '✅ 积极' : f.result === 'neutral' ? '➖ 一般' : '❌ 消极'}</span>
+            ${f.nextDate ? `<div style="font-size:11px;color:var(--primary);margin-top:4px">📅 下次回访: ${f.nextDate}</div>` : ''}
+            <button class="btn btn-danger btn-sm" style="margin-top:4px;font-size:10px;padding:2px 8px" onclick="deleteFollowup('${f.id}')">删除</button>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+
+    <!-- Transactions -->
+    <div class="card">
+      <div style="font-size:15px;font-weight:500;margin-bottom:12px">💰 收支记录 (${txns.length})</div>
+      ${txns.length === 0 ? '<div style="color:var(--text-secondary);font-size:13px;text-align:center;padding:12px">暂无收支记录</div>' : ''}
+      ${txns.slice(0, 20).map(t => `
+        <div class="txn-item">
+          <div class="txn-icon ${t.type}">${t.type === 'income' ? '💰' : '💸'}</div>
+          <div class="txn-info">
+            <div class="txn-cat">${t.category}</div>
+            <div class="txn-date">${t.date} ${t.note ? '· ' + t.note : ''}</div>
+          </div>
+          <div class="txn-amount ${t.type}">${t.type === 'income' ? '+' : '-'}¥${t.amount.toFixed(2)}</div>
+          <button style="background:none;border:none;color:#999;font-size:14px;cursor:pointer;margin-left:8px;padding:4px" onclick="deleteTransaction('${t.id}')">✕</button>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+// ====== CLOSE MODALS ON OVERLAY CLICK ======
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) closeModal(overlay.id);
+  });
+});
+
+// ====== INIT ======
+loadDB();
+renderDashboard();
+
+// Set today's date as default for date inputs
+const today = new Date().toISOString().slice(0, 10);
+document.getElementById('txnDate').value = today;
+</script>
+</body>
+</html>
